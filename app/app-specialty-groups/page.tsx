@@ -829,7 +829,7 @@ export default function AppSpecialtyGroupsPage() {
                     <button
                       type="button"
                       disabled={statusId === row.id}
-                      onClick={() => handleStatusChange(row)}
+                      onClick={() => handleStatusChange(row as SpecialtyGroup)}
                       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition ${
                         row.is_active
                           ? "bg-success-soft text-success hover:opacity-90"
@@ -864,7 +864,7 @@ export default function AppSpecialtyGroupsPage() {
                       <button
                         type="button"
                         disabled={deletingId === row.id}
-                        onClick={() => handleDelete(row)}
+                        onClick={() => handleDelete(row as SpecialtyGroup)}
                         className="cursor-pointer flex h-8 items-center rounded-md px-2.5 text-xs font-medium text-destructive transition hover:bg-destructive-soft disabled:opacity-50"
                       >
                         {deletingId === row.id ? "Deleting..." : "Delete"}

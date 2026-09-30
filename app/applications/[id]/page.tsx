@@ -119,7 +119,6 @@ function statusClasses(status: string) {
 function Field({
   label,
   value,
-  icon,
 }: {
   label: string;
   value: unknown;

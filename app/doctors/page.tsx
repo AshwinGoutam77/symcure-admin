@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
-export default function DoctorsPage() {
+function DoctorsPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -802,51 +802,10 @@ export default function DoctorsPage() {
   );
 }
 
-
-/* ==========================================================================
-   METRIC CARD
-   ========================================================================== */
-
-function MetricCard({
-  title,
-  value,
-  description,
-  icon,
-  iconClass,
-}: {
-  title: string;
-  value: string;
-  description: string;
-  icon: React.ReactNode;
-  iconClass: string;
-}) {
+export default function DoctorsPage() {
   return (
-    <div className="group relative min-h-[116px] rounded-xl border border-border bg-card px-5 py-4 shadow-sm transition hover:-translate-y-[1px] hover:border-input hover:shadow-md">
-
-      {/* Icon */}
-      <div
-        className={`absolute bottom-8 right-5 flex h-9 w-9 items-center justify-center rounded-lg ${iconClass}`}
-      >
-        {icon}
-      </div>
-
-      {/* Content */}
-      <div>
-
-        <p className="mb-3 text-xs font-medium text-muted-foreground/80">
-          {title}
-        </p>
-
-        <p className="truncate text-2xl font-semibold leading-tight tracking-tight text-foreground">
-          {value}
-        </p>
-
-        <p className="mt-1 text-xs text-muted-foreground/80">
-          {description}
-        </p>
-
-      </div>
-
-    </div>
+    <Suspense fallback={null}>
+      <DoctorsPageContent />
+    </Suspense>
   );
 }
