@@ -645,42 +645,6 @@ function DoctorsPageContent() {
 
 
           {/* ===================================================
-              EMPTY
-          ==================================================== */}
-
-          {!isLoading && rows.length === 0 && (
-            <div className="flex flex-col items-center justify-center border-t border-border/60 px-5 py-14 text-center">
-
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground/80">
-                <Stethoscope className="size-5" />
-              </div>
-
-              <p className="mt-3 text-sm font-semibold text-foreground/80">
-                No doctors found
-              </p>
-
-              <p className="mt-1 max-w-sm text-xs leading-5 text-muted-foreground/80">
-                {hasFilters
-                  ? "Try changing your search or status filter."
-                  : "There are no doctor records available."}
-              </p>
-
-              {hasFilters && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-4 h-8 text-xs"
-                  onClick={clearFilters}
-                >
-                  Clear filters
-                </Button>
-              )}
-
-            </div>
-          )}
-
-
-          {/* ===================================================
               PAGINATION
           ==================================================== */}
 
