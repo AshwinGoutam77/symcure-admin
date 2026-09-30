@@ -24,6 +24,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "@/components/pagination";
 
 function DoctorsPageContent() {
   const router = useRouter();
@@ -45,6 +46,7 @@ function DoctorsPageContent() {
   const [search, setSearch] = useState(initialSearch);
   const [status, setStatus] = useState(initialStatus);
   const [page, setPage] = useState(initialPage);
+  const limit = 20;
 
   const updateListUrl = (
     nextSearch: string,
@@ -102,7 +104,7 @@ function DoctorsPageContent() {
         search,
         status,
         page,
-        limit: 20,
+        limit,
       }),
     ["admin", "doctors", { search, status, page, limit: 20 }],
   );
@@ -150,7 +152,7 @@ function DoctorsPageContent() {
       .toLowerCase();
 
     if (value === "active") {
-      return "active";
+      return "Active";
     }
 
     if (value === "suspended") {
@@ -588,16 +590,24 @@ function DoctorsPageContent() {
                 {
                   header: "Commission",
                   key: "commission",
-                  render: (_, row) => (
-                    <Badge
-                      variant="secondary"
-                      className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground"
-                    >
-                      {row.commission?.is_custom
-                        ? "Custom"
-                        : "Default"}
-                    </Badge>
-                  ),
+                  render: (_, row) => {
+                    const commission = row.commission;
+
+                    return (
+                      <>
+                        <p
+                          className="text-xs font-medium text-muted-foreground"
+                        >
+                          Online: ₹{commission.online_consultation_commission_amt}
+                        </p>
+                        <p
+                          className="text-xs font-medium text-muted-foreground"
+                        >
+                          Cash: ₹{commission.clinic_consultation_commission_amt}
+                        </p>
+                      </>
+                    );
+                  },
                 },
 
 
@@ -645,25 +655,26 @@ function DoctorsPageContent() {
 
 
           {/* ===================================================
-              PAGINATION
-          ==================================================== */}
+    PAGINATION
+==================================================== */}
 
           {!isLoading && rows.length > 0 && (
             <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-
-              {/* Count */}
+              {/* COUNT */}
               <p className="text-xs text-muted-foreground/80">
-
                 Showing{" "}
 
                 <span className="font-medium text-muted-foreground">
-                  {startRecord}
+                  {(currentPage - 1) * limit + 1}
                 </span>
 
                 {" – "}
 
                 <span className="font-medium text-muted-foreground">
-                  {endRecord}
+                  {Math.min(
+                    currentPage * limit,
+                    total,
+                  )}
                 </span>
 
                 {" of "}
@@ -671,74 +682,25 @@ function DoctorsPageContent() {
                 <span className="font-medium text-muted-foreground">
                   {total}
                 </span>
-
               </p>
 
+              {/* PAGINATION */}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={
+                  Number(meta.last_page) || 1
+                }
+                disabled={isLoading || isFetching}
+                onPageChange={(nextPage) => {
+                  setPage(nextPage);
 
-              {/* Pagination */}
-              <div className="flex items-center gap-1.5">
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 px-2.5 text-xs"
-                  disabled={
-                    currentPage <= 1
-                  }
-                  onClick={() => {
-                    const nextPage = Math.max(
-                      1,
-                      currentPage - 1,
-                    );
-
-                    setPage(nextPage);
-                    updateListUrl(
-                      search,
-                      status,
-                      nextPage,
-                    );
-                  }}
-                >
-                  <ChevronLeft className="mr-1 size-4" />
-                  Previous
-                </Button>
-
-
-                {/* Current page */}
-                <div className="flex h-8 min-w-8 items-center justify-center rounded-md bg-foreground px-2 text-xs font-semibold text-white">
-                  {currentPage}
-                </div>
-
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 px-2.5 text-xs"
-                  disabled={
-                    meta.last_page
-                      ? currentPage >=
-                      Number(
-                        meta.last_page,
-                      )
-                      : rows.length < 20
-                  }
-                  onClick={() => {
-                    const nextPage = currentPage + 1;
-
-                    setPage(nextPage);
-                    updateListUrl(
-                      search,
-                      status,
-                      nextPage,
-                    );
-                  }}
-                >
-                  Next
-                  <ChevronRight className="ml-1 size-4" />
-                </Button>
-
-              </div>
-
+                  updateListUrl(
+                    search,
+                    status,
+                    nextPage,
+                  );
+                }}
+              />
             </div>
           )}
 

@@ -385,3 +385,98 @@ export async function deleteAppSpecialtyGroup(id: string) {
     `/admin/app-specialty-groups/${encodeURIComponent(id)}`,
   );
 }
+
+// ============================================================
+// App Search Keywords
+// ============================================================
+
+export async function getAppSearchKeywords(
+  params: Record<string, unknown> = {},
+) {
+  return unwrapData(
+    await adminGet(
+      `/admin/app-search-keywords${queryString(params)}`,
+    ),
+  );
+}
+
+export async function getAppSearchKeywordSpecializationOptions(
+  params: Record<string, unknown> = {},
+) {
+  return unwrapData(
+    await adminGet(
+      `/admin/app-search-keywords/specialization-options${queryString(
+        params,
+      )}`,
+    ),
+  );
+}
+
+export async function getAppSearchKeyword(
+  id: string,
+) {
+  return unwrapData(
+    await adminGet(
+      `/admin/app-search-keywords/${encodeURIComponent(id)}`,
+    ),
+  );
+}
+
+export async function createAppSearchKeyword(
+  body: {
+    keyword: string;
+    is_active: boolean;
+    qualification_specialization_ids: (
+      | string
+      | number
+    )[];
+  },
+) {
+  return unwrapData(
+    await adminPost(
+      "/admin/app-search-keywords",
+      body,
+    ),
+  );
+}
+
+export async function updateAppSearchKeyword(
+  id: string,
+  body: {
+    keyword: string;
+    is_active: boolean;
+    qualification_specialization_ids: (
+      | string
+      | number
+    )[];
+  },
+) {
+  return unwrapData(
+    await adminPatch(
+      `/admin/app-search-keywords/${encodeURIComponent(id)}`,
+      body,
+    ),
+  );
+}
+
+export async function setAppSearchKeywordStatus(
+  id: string,
+  is_active: boolean,
+) {
+  return unwrapData(
+    await adminPatch(
+      `/admin/app-search-keywords/${encodeURIComponent(id)}/status`,
+      {
+        is_active,
+      },
+    ),
+  );
+}
+
+export async function deleteAppSearchKeyword(
+  id: string,
+) {
+  return adminDelete(
+    `/admin/app-search-keywords/${encodeURIComponent(id)}`,
+  );
+}

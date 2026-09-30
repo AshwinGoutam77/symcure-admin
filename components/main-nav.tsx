@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, FileSearch, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAdminMe } from "@/lib/api/admin";
 import { useAdminQuery } from "@/hooks/use-admin-api";
@@ -67,6 +67,16 @@ const navGroups: NavGroup[] = [
       { label: "Appointments", href: "/appointments", icon: appIcons.appointments, permissionKey: "appointments" },
       { label: "Patients", href: "/patients", icon: appIcons.patients, permissionKey: "patients" },
       { label: "App Specialty Groups", href: "/app-specialty-groups", icon: appIcons.specialties, permissionKey: "app_specialty_groups" },
+      {
+  label: "App Search Keywords",
+  href: "/app-search-keywords",
+  icon: Search,
+},
+{
+  label: "Patient Search Logs",
+  href: "/patient-search-logs",
+  icon: FileSearch,
+},
     ],
   },
   {

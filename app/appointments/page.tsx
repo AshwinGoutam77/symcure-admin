@@ -20,21 +20,22 @@ import {
 } from "lucide-react";
 import { getAppointments } from "@/lib/api/admin";
 import { useAdminQuery } from "@/hooks/use-admin-api";
+import { Pagination } from "@/components/pagination";
 
 export default function AppointmentsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [consultType, setConsultType] = useState("");
- const [page, setPage] = useState(() => {
-  if (typeof window === "undefined") return 1;
+  const [page, setPage] = useState(() => {
+    if (typeof window === "undefined") return 1;
 
-  const savedPage = sessionStorage.getItem("appointments-page");
-  return savedPage ? Number(savedPage) : 1;
-});
+    const savedPage = sessionStorage.getItem("appointments-page");
+    return savedPage ? Number(savedPage) : 1;
+  });
 
-useEffect(() => {
-  sessionStorage.setItem("appointments-page", String(page));
-}, [page]);
+  useEffect(() => {
+    sessionStorage.setItem("appointments-page", String(page));
+  }, [page]);
 
   const { data, isLoading, error, refetch } = useAdminQuery(
     () =>
@@ -330,105 +331,6 @@ useEffect(() => {
         </div>
 
         {/* ==========================================================
-            KPI CARDS
-        =========================================================== */}
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-
-          {/* TOTAL */}
-          <div className="rounded-xl border border-border bg-card shadow-sm">
-            <div className="flex h-[108px] items-center justify-between px-5">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground/80">
-                  Total Appointments
-                </p>
-
-                <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-                  {stats.total}
-                </p>
-
-                <p className="mt-0.5 text-xs text-muted-foreground/80">
-                  Platform appointments
-                </p>
-              </div>
-
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Calendar className="size-5" />
-              </div>
-            </div>
-          </div>
-
-          {/* SCHEDULED */}
-          <div className="rounded-xl border border-border bg-card shadow-sm">
-            <div className="flex h-[108px] items-center justify-between px-5">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground/80">
-                  Scheduled
-                </p>
-
-                <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-                  {stats.scheduled}
-                </p>
-
-                <p className="mt-0.5 text-xs text-muted-foreground/80">
-                  Upcoming appointments
-                </p>
-              </div>
-
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success-soft text-success">
-                <Clock className="size-5" />
-              </div>
-            </div>
-          </div>
-
-          {/* COMPLETED */}
-          <div className="rounded-xl border border-border bg-card shadow-sm">
-            <div className="flex h-[108px] items-center justify-between px-5">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground/80">
-                  Completed
-                </p>
-
-                <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-                  {stats.completed}
-                </p>
-
-                <p className="mt-0.5 text-xs text-muted-foreground/80">
-                  Completed visits
-                </p>
-              </div>
-
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-success-soft text-success">
-                <CheckCircle2 className="size-5" />
-              </div>
-            </div>
-          </div>
-
-          {/* UNRESOLVED */}
-          <div className="rounded-xl border border-border bg-card shadow-sm">
-            <div className="flex h-[108px] items-center justify-between px-5">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground/80">
-                  Unresolved
-                </p>
-
-                <p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-                  {stats.unresolved}
-                </p>
-
-                <p className="mt-0.5 text-xs text-muted-foreground/80">
-                  Require attention
-                </p>
-              </div>
-
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-warning-soft text-warning">
-                <XCircle className="size-5" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ==========================================================
             ERROR
         =========================================================== */}
 
@@ -509,7 +411,6 @@ useEffect(() => {
                 >
                   <option value="">All statuses</option>
                   <option value="scheduled">Scheduled</option>
-                  <option value="in_progress">In progress</option>
                   <option value="completed">Completed</option>
                   <option value="cancelled">Cancelled</option>
                   <option value="no_show">No-show</option>
@@ -590,7 +491,7 @@ useEffect(() => {
                       </p>
 
                       <p className="max-w-[180px] truncate text-xs font-normal text-muted-foreground/80">
-                        {(row?.patient?.guardian_name && row?.patient?.guardian_type )&& row?.patient?.guardian_type + " " + row?.patient?.guardian_name}
+                        {(row?.patient?.guardian_name && row?.patient?.guardian_type) && row?.patient?.guardian_type + " " + row?.patient?.guardian_name}
                       </p>
 
                       {getPatientCode(row) && (
@@ -621,16 +522,14 @@ useEffect(() => {
 
                     return (
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
-                          online
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${online
                             ? "bg-chart-4/10 text-chart-4"
                             : "bg-warning-soft text-warning"
-                        }`}
+                          }`}
                       >
                         <span
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            online ? "bg-chart-4" : "bg-warning"
-                          }`}
+                          className={`h-1.5 w-1.5 rounded-full ${online ? "bg-chart-4" : "bg-warning"
+                            }`}
                         />
                         {online ? "Video" : "Clinic"}
                       </span>
@@ -638,43 +537,116 @@ useEffect(() => {
                   },
                 },
 
-                {
-                  header: "Status",
-                  key: "status",
-                  render: (_, row) => {
-                    const currentStatus = String(
-                      row?.status ?? "",
-                    ).toLowerCase();
+               {
+  header: "Status",
+  key: "status",
+  render: (_, row) => {
+    const currentStatus = String(
+      row?.status ?? "",
+    ).toLowerCase();
 
-                    return (
-                      <StatusBadge status={statusType(currentStatus)}>
-                        {formatStatus(currentStatus)}
-                      </StatusBadge>
-                    );
-                  },
-                },
+    const statusStyles: Record<
+      string,
+      string
+    > = {
+      scheduled:
+        "bg-blue-100 text-blue-700 ring-1 ring-blue-200",
 
-                {
-                  header: "Amount",
-                  key: "amount",
-                  render: (_, row) => (
-                    <div>
-                      <p className="text-xs font-semibold text-foreground">
-                        {formatAmount(
-                          row?.amount ??
-                            row?.consultation_fee ??
-                            row?.total_amount,
-                        )}
-                      </p>
+      in_progress:
+        "bg-orange-100 text-orange-700 ring-1 ring-orange-200",
 
-                      {row?.payment_status && (
-                        <p className="mt-0.5 text-xs text-muted-foreground/80">
-                          {formatStatus(row.payment_status)}
-                        </p>
-                      )}
-                    </div>
-                  ),
-                },
+      completed:
+        "bg-green-100 text-green-700 ring-1 ring-green-200",
+
+      cancelled:
+        "bg-red-100 text-red-700 ring-1 ring-red-200",
+
+      no_show:
+        "bg-purple-100 text-purple-700 ring-1 ring-purple-200",
+
+      unresolved:
+        "bg-yellow-100 text-yellow-700 ring-1 ring-yellow-200",
+    };
+
+    const dotStyles: Record<
+      string,
+      string
+    > = {
+      scheduled: "bg-blue-500",
+      in_progress: "bg-orange-500",
+      completed: "bg-green-500",
+      cancelled: "bg-red-500",
+      no_show: "bg-purple-500",
+      unresolved: "bg-yellow-500",
+    };
+
+    const badgeClass =
+      statusStyles[currentStatus] ??
+      "bg-muted text-muted-foreground";
+
+    const dotClass =
+      dotStyles[currentStatus] ??
+      "bg-muted-foreground";
+
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${badgeClass}`}
+      >
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${dotClass}`}
+        />
+
+        {formatStatus(currentStatus)}
+      </span>
+    );
+  },
+},
+            {
+  header: "Amount",
+  key: "amount",
+  render: (_, row) => {
+    const paymentStatus = String(
+      row?.payment_status ?? "",
+    ).toLowerCase();
+
+    const paymentTextStyles: Record<
+      string,
+      string
+    > = {
+      paid: "text-green-600",
+      unpaid: "text-red-600",
+      pending: "text-yellow-600",
+    };
+
+    return (
+      <div>
+        <p className="text-xs font-semibold text-foreground">
+          {formatAmount(
+            row?.amount ??
+              row?.consultation_fee ??
+              row?.total_amount,
+          )}
+        </p>
+
+        {paymentStatus && (
+          <p
+            className={`mt-0.5 text-[10px] font-medium ${
+              paymentTextStyles[
+                paymentStatus
+              ] ?? "text-muted-foreground"
+            }`}
+          >
+            {paymentStatus
+              .replace(/_/g, " ")
+              .replace(/\b\w/g, (char) =>
+                char.toUpperCase(),
+              )}
+          </p>
+        )}
+      </div>
+    );
+  },
+},
 
                 {
                   header: "",
@@ -705,72 +677,45 @@ useEffect(() => {
             </div>
           )}
 
-          {/* PAGINATION */}
+      {/* PAGINATION */}
 
-          {!isLoading && rows.length > 0 && (
-            <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+{!isLoading && rows.length > 0 && (
+  <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+    {/* COUNT */}
+    <p className="text-xs text-muted-foreground/80">
+      Showing{" "}
+      <span className="font-medium text-muted-foreground">
+        {startRecord}
+      </span>
 
-              {/* Count */}
-              <p className="text-xs text-muted-foreground/80">
-                Showing{" "}
-                <span className="font-medium text-muted-foreground">
-                  {startRecord}
-                </span>
-                {" – "}
-                <span className="font-medium text-muted-foreground">
-                  {endRecord}
-                </span>
-                {" of "}
-                <span className="font-medium text-muted-foreground">
-                  {total}
-                </span>
-              </p>
+      {" – "}
 
-              {/* Pagination */}
-              <div className="flex items-center gap-1.5">
+      <span className="font-medium text-muted-foreground">
+        {endRecord}
+      </span>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 px-2.5 text-xs"
-                  disabled={currentPage <= 1}
-                  onClick={() =>
-                    setPage((previous) => Math.max(1, previous - 1))
-                  }
-                >
-                  <ChevronLeft className="mr-1 size-4" />
-                  Previous
-                </Button>
+      {" of "}
 
-                <div className="flex h-8 min-w-8 items-center justify-center rounded-md bg-foreground px-2 text-xs font-semibold text-white">
-                  {currentPage}
-                </div>
+      <span className="font-medium text-muted-foreground">
+        {total}
+      </span>
+    </p>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 px-2.5 text-xs"
-                  disabled={
-                    lastPage
-                      ? currentPage >= lastPage
-                      : rows.length < 20
-                  }
-                  onClick={() =>
-                    setPage((previous) => previous + 1)
-                  }
-                >
-                  Next
-                  <ChevronRight className="ml-1 size-4" />
-                </Button>
-
-              </div>
-
-            </div>
-          )}
+    {/* PAGINATION */}
+    <Pagination
+      currentPage={currentPage}
+      totalPages={lastPage}
+      disabled={isLoading}
+      onPageChange={(nextPage) => {
+        setPage(nextPage);
+      }}
+    />
+  </div>
+)}
 
         </section>
 
-        </div>
       </div>
+    </div>
   );
 }
