@@ -15,6 +15,7 @@ import {
   deleteAppSpecialtyGroupImage,
   deleteAppSpecialtyGroup,
 } from "@/lib/api/admin";
+import { Pagination } from "@/components/pagination";
 
 type SpecialtyGroup = {
   id: string;
@@ -878,59 +879,39 @@ export default function AppSpecialtyGroupsPage() {
           </div>
         )}
 
-        {!loading && groups.length > 0 && (
-          <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-muted-foreground/80">
-              Showing{" "}
-              <span className="font-medium text-muted-foreground">
-                {(currentPage - 1) * Number(meta?.per_page ?? limit) + 1}
-              </span>
-              {" – "}
-              <span className="font-medium text-muted-foreground">
-                {Math.min(
-                  currentPage * Number(meta?.per_page ?? limit),
-                  Number(meta?.total ?? groups.length),
-                )}
-              </span>
-              {" of "}
-              <span className="font-medium text-muted-foreground">
-                {Number(meta?.total ?? groups.length)}
-              </span>
-            </p>
-
-            <div className="flex items-center gap-1.5">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 px-2.5 text-xs"
-                disabled={currentPage <= 1}
-                onClick={() =>
-                  setPage((previous) => Math.max(1, previous - 1))
-                }
-              >
-                <ChevronLeft className="mr-1 size-4" />
-                Previous
-              </Button>
-
-              <div className="flex h-8 min-w-8 items-center justify-center rounded-md bg-foreground px-2 text-xs font-semibold text-white">
-                {currentPage}
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 px-2.5 text-xs"
-                disabled={currentPage >= lastPage}
-                onClick={() => setPage((previous) => previous + 1)}
-              >
-                Next
-                <ChevronRight className="ml-1 size-4" />
-              </Button>
-            </div>
-          </div>
+      {!loading && groups.length > 0 && (
+  <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <p className="text-xs text-muted-foreground/80">
+      Showing{" "}
+      <span className="font-medium text-muted-foreground">
+        {(currentPage - 1) *
+          Number(meta?.per_page ?? limit) +
+          1}
+      </span>
+      {" – "}
+      <span className="font-medium text-muted-foreground">
+        {Math.min(
+          currentPage *
+            Number(meta?.per_page ?? limit),
+          Number(meta?.total ?? groups.length),
         )}
+      </span>
+      {" of "}
+      <span className="font-medium text-muted-foreground">
+        {Number(meta?.total ?? groups.length)}
+      </span>
+    </p>
+
+    <Pagination
+      currentPage={currentPage}
+      totalPages={lastPage}
+      disabled={loading}
+      onPageChange={(nextPage) => {
+        setPage(nextPage);
+      }}
+    />
+  </div>
+)}
       </section>
 
       {/* ======================================================

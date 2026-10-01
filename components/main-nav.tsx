@@ -82,20 +82,20 @@ const navGroups: NavGroup[] = [
   {
     label: "Business",
     items: [
-      { label: "Finance", href: "/finance", icon: appIcons.finance, permissionKey: "earnings", comingSoon: true },
-      { label: "Audit Log", href: "/audit-log", icon: appIcons.audit, permissionKey: "activity_logs", disabled: true, comingSoon: true },
-      { label: "Notif. Log", href: "/notifications", icon: appIcons.notifications, permissionKey: "notifications", disabled: true, comingSoon: true },
+      { label: "Finance", href: "/finance", icon: appIcons.finance, permissionKey: "earnings"},
+      { label: "Audit Log", href: "/audit-log", icon: appIcons.audit, permissionKey: "activity_logs" },
+      { label: "Notif. Log", href: "/notifications", icon: appIcons.notifications, permissionKey: "notifications" },
     ],
   },
   {
     label: "Administration",
     items: [
-      { label: "Master Data", icon: appIcons.masterData, disabled: true, comingSoon: true, subItems: importItems },
-      { label: "Preview Data", icon: appIcons.preview, disabled: true, comingSoon: true, subItems: previewItems },
-      { label: "Roles", href: "/roles", icon: appIcons.roles, permissionKey: "roles", superAdminOnly: true, disabled: true, comingSoon: true },
-      { label: "Role Permissions", href: "/role-permission", icon: appIcons.permissions, permissionKey: "role_permissions", superAdminOnly: true, disabled: true, comingSoon: true },
-      { label: "System Users", href: "/system-users", icon: appIcons.systemUsers, permissionKey: "system_users", disabled: true, comingSoon: true },
-      { label: "Settings", href: "/settings", icon: appIcons.settings, permissionKey: "settings", disabled: true, comingSoon: true },
+      { label: "Master Data", icon: appIcons.masterData, subItems: importItems },
+      { label: "Preview Data", icon: appIcons.preview, subItems: previewItems },
+      { label: "Roles", href: "/roles", icon: appIcons.roles, permissionKey: "roles", superAdminOnly: true},
+      { label: "Role Permissions", href: "/role-permission", icon: appIcons.permissions, permissionKey: "role_permissions", superAdminOnly: true},
+      { label: "System Users", href: "/system-users", icon: appIcons.systemUsers, permissionKey: "system_users"},
+      { label: "Settings", href: "/settings", icon: appIcons.settings, permissionKey: "settings"},
     ],
   },
 ];

@@ -16,6 +16,7 @@ import {
 import { getPatients } from "@/lib/api/admin";
 import { useAdminQuery } from "@/hooks/use-admin-api";
 import { formatDate } from "@/lib/formatters";
+import { Pagination } from "@/components/pagination";
 
 /* ================================================================
    PAGE
@@ -99,6 +100,7 @@ export default function PatientsPage() {
       }
     };
   }, []);
+  
 
   /* ==============================================================
      API
@@ -228,6 +230,19 @@ export default function PatientsPage() {
           "",
       ).toLowerCase() === "suspended",
   ).length;
+
+  const total = Number(meta?.total ?? rows.length);
+const currentPage = Number(meta?.current_page ?? page);
+const lastPage = Number(meta?.last_page ?? 1);
+const perPage = Number(meta?.per_page ?? 20);
+
+const startRecord =
+  total === 0 ? 0 : (currentPage - 1) * perPage + 1;
+
+const endRecord =
+  total === 0
+    ? 0
+    : Math.min(startRecord + rows.length - 1, total);
 
   /* ==============================================================
      RENDER
@@ -640,106 +655,43 @@ export default function PatientsPage() {
 
             </div>
           )}
+{/* ======================================================
+    PAGINATION
+======================================================= */}
 
-          {/* ======================================================
-              PAGINATION
-          ======================================================= */}
+{!isLoading && rows.length > 0 && (
+  <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+    {/* COUNT */}
+    <p className="text-xs text-muted-foreground/80">
+      Showing{" "}
+      <span className="font-medium text-muted-foreground">
+        {startRecord}
+      </span>
 
-          {!isLoading && rows.length > 0 && (
-            <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+      {" – "}
 
-              <p className="text-xs text-muted-foreground/80">
-                Showing{" "}
+      <span className="font-medium text-muted-foreground">
+        {endRecord}
+      </span>
 
-                <span className="font-medium text-muted-foreground">
-                  {(Number(
-                    meta?.current_page ?? page,
-                  ) -
-                    1) *
-                    Number(meta?.per_page ?? 20) +
-                    1}
-                </span>
+      {" of "}
 
-                {" – "}
+      <span className="font-medium text-muted-foreground">
+        {total}
+      </span>
+    </p>
 
-                <span className="font-medium text-muted-foreground">
-                  {Math.min(
-                    Number(
-                      meta?.current_page ?? page,
-                    ) *
-                      Number(meta?.per_page ?? 20),
-                    Number(
-                      meta?.total ?? rows.length,
-                    ),
-                  )}
-                </span>
-
-                {" of "}
-
-                <span className="font-medium text-muted-foreground">
-                  {Number(
-                    meta?.total ?? rows.length,
-                  )}
-                </span>
-              </p>
-
-              <div className="flex items-center gap-1.5">
-
-                {/* Previous */}
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 px-2.5 text-xs"
-                  disabled={page <= 1}
-                  onClick={() =>
-                    setPage((previous) =>
-                      Math.max(1, previous - 1),
-                    )
-                  }
-                >
-                  <ChevronLeft className="mr-1 size-4" />
-                  Previous
-                </Button>
-
-                {/* Current Page */}
-
-                <div className="flex h-8 min-w-8 items-center justify-center rounded-md bg-foreground px-2 text-xs font-semibold text-white">
-                  {Number(
-                    meta?.current_page ?? page,
-                  )}
-                </div>
-
-                {/* Next */}
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 px-2.5 text-xs"
-                  disabled={
-                    meta?.last_page
-                      ? Number(meta.last_page) <=
-                        Number(
-                          meta.current_page ?? page,
-                        )
-                      : rows.length < 20
-                  }
-                  onClick={() =>
-                    setPage(
-                      (previous) =>
-                        previous + 1,
-                    )
-                  }
-                >
-                  Next
-                  <ChevronRight className="ml-1 size-4" />
-                </Button>
-
-              </div>
-            </div>
-          )}
+    {/* PAGINATION */}
+    <Pagination
+      currentPage={currentPage}
+      totalPages={lastPage}
+      disabled={isLoading}
+      onPageChange={(nextPage) => {
+        setPage(nextPage);
+      }}
+    />
+  </div>
+)}
         </div>
       </div>
     </div>

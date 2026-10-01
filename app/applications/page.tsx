@@ -44,6 +44,7 @@ import {
 } from "@/hooks/use-admin-api";
 import { formatDate, formatTime } from "@/lib/formatters";
 import Link from "next/link";
+import { Pagination } from "@/components/pagination";
 
 /* -------------------------------------------------------------------------- */
 /* Helpers                                                                    */
@@ -617,59 +618,34 @@ export default function ApplicationsPage() {
             )}
 
             {/* Pagination */}
-            {!isLoading && rows.length > 0 && (
-              <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-muted-foreground/80">
-                  Showing{" "}
-                  <span className="font-medium text-muted-foreground">
-                    {total === 0 ? 0 : (currentPage - 1) * 20 + 1}
-                  </span>
-                  {" – "}
-                  <span className="font-medium text-muted-foreground">
-                    {Math.min(currentPage * 20, total)}
-                  </span>
-                  {" of "}
-                  <span className="font-medium text-muted-foreground">
-                    {total}
-                  </span>
-                </p>
+           {/* Pagination */}
+{!isLoading && rows.length > 0 && (
+  <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <p className="text-xs text-muted-foreground/80">
+      Showing{" "}
+      <span className="font-medium text-muted-foreground">
+        {total === 0 ? 0 : (currentPage - 1) * 20 + 1}
+      </span>
+      {" – "}
+      <span className="font-medium text-muted-foreground">
+        {Math.min(currentPage * 20, total)}
+      </span>
+      {" of "}
+      <span className="font-medium text-muted-foreground">
+        {total}
+      </span>
+    </p>
 
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-2.5 text-xs"
-                    disabled={currentPage <= 1 || isFetching}
-                    onClick={() =>
-                      setPage((previous) => Math.max(1, previous - 1))
-                    }
-                  >
-                    <ChevronLeft className="mr-1 size-4" />
-                    Previous
-                  </Button>
-
-                  <div className="flex h-8 min-w-8 items-center justify-center rounded-md bg-foreground px-2 text-xs font-semibold text-white">
-                    {currentPage}
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 px-2.5 text-xs"
-                    disabled={
-                      isFetching ||
-                      (meta?.last_page
-                        ? currentPage >= lastPage
-                        : rows.length < 20)
-                    }
-                    onClick={() => setPage((previous) => previous + 1)}
-                  >
-                    Next
-                    <ChevronRight className="ml-1 size-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
+    <Pagination
+      currentPage={currentPage}
+      totalPages={lastPage}
+      disabled={isFetching}
+      onPageChange={(nextPage) => {
+        setPage(nextPage);
+      }}
+    />
+  </div>
+)}
           </section>
           {/* ================================================================== */}
           {/* APPROVE CONFIRMATION MODAL                                         */}

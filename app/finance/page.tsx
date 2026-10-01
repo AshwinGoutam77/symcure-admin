@@ -24,6 +24,7 @@ import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge } from "@/components/status-badge";
 import { ChartCard, TrendAreaChart, BarCompareChart, DonutChart } from "@/components/charts";
+import { Pagination } from "@/components/pagination";
 
 /** Ledger amounts keep paise precision */
 const money = (value: number | string | null | undefined) => formatMoney(value, { decimals: true });
@@ -1002,51 +1003,38 @@ export default function FinancePage() {
               </div>
             )}
 
-          {/* Pagination */}
-          <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-muted-foreground/80">
-              {total > 0 ? (
-                <>
-                  Showing{" "}
-                  <span className="font-medium text-muted-foreground">{from}</span>
-                  {" – "}
-                  <span className="font-medium text-muted-foreground">{to}</span>
-                  {" of "}
-                  <span className="font-medium text-muted-foreground">{total}</span>
-                </>
-              ) : "No payments"}
-            </p>
+        {/* Pagination */}
+<div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+  <p className="text-xs text-muted-foreground/80">
+    {total > 0 ? (
+      <>
+        Showing{" "}
+        <span className="font-medium text-muted-foreground">
+          {from}
+        </span>
+        {" – "}
+        <span className="font-medium text-muted-foreground">
+          {to}
+        </span>
+        {" of "}
+        <span className="font-medium text-muted-foreground">
+          {total}
+        </span>
+      </>
+    ) : (
+      "No payments"
+    )}
+  </p>
 
-            <div className="flex items-center gap-1.5">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={currentPage <= 1 || isFetching}
-                onClick={() => goToPage(currentPage - 1)}
-                className="h-8 px-2.5 text-xs"
-              >
-                <ChevronLeft className="mr-1 size-4" />
-                Previous
-              </Button>
-
-              <div className="flex h-8 min-w-8 items-center justify-center rounded-md bg-foreground px-2 text-xs font-semibold text-white">
-                {currentPage}
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={currentPage >= lastPage || isFetching}
-                onClick={() => goToPage(currentPage + 1)}
-                className="h-8 px-2.5 text-xs"
-              >
-                Next
-                <ChevronRight className="ml-1 size-4" />
-              </Button>
-            </div>
-          </div>
+  <Pagination
+    currentPage={currentPage}
+    totalPages={lastPage}
+    disabled={isFetching}
+    onPageChange={(nextPage) => {
+      setPage(nextPage);
+    }}
+  />
+</div>
 
         </div>
       </div>
