@@ -41,6 +41,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
 import { useToast } from "@/components/ui/use-toast";
+import { Pagination } from "@/components/pagination";
 
 const TABS = [
   "Profile Info",
@@ -277,10 +278,10 @@ function Field({
         placeholder={placeholder}
         onChange={(e) => onChange?.(e.target.value)}
         className={`h-10 w-full rounded-md border px-3 text-xs outline-none transition ${error
-            ? "border-destructive focus:border-destructive focus:ring-2 focus:ring-destructive/10"
-            : disabled
-              ? "cursor-not-allowed border-border bg-muted/50 text-muted-foreground/80"
-              : "border-border focus:border-primary focus:bg-card focus:ring-2 focus:ring-primary/10"
+          ? "border-destructive focus:border-destructive focus:ring-2 focus:ring-destructive/10"
+          : disabled
+            ? "cursor-not-allowed border-border bg-muted/50 text-muted-foreground/80"
+            : "border-border focus:border-primary focus:bg-card focus:ring-2 focus:ring-primary/10"
           }`}
       />
       {error ? (
@@ -984,109 +985,284 @@ export default function AdminDoctorDetailPage() {
     },
   ];
 
-  const appointmentColumns = [
-    {
-      key: "appointment_code",
-      header: "Appointment",
-      render: (_value: any, row: any) => (
+const appointmentColumns = [
+  {
+    key: "appointment_code",
+    header: "Appointment",
+    render: (_value: any, row: any) => (
+      <div>
+        <p className="text-xs font-semibold text-foreground">
+          {row.appointment_code ??
+            row.appointment_id ??
+            row.id ??
+            "—"}
+        </p>
+
+        {row.token_number ? (
+          <p className="mt-0.5 text-xs text-muted-foreground/80">
+            Token: {row.token_number}
+          </p>
+        ) : null}
+      </div>
+    ),
+  },
+
+  {
+    key: "patient",
+    header: "Patient",
+    render: (_value: any, row: any) => (
+      <div className="min-w-0">
+        <p className="max-w-[180px] truncate text-xs font-semibold text-foreground">
+          {row.patient?.name ??
+            row.patient?.full_name ??
+            row.patient_name ??
+            "—"}
+        </p>
+
+        {row.patient?.guardian_name &&
+          row.patient?.guardian_type ? (
+          <p className="max-w-[180px] truncate text-xs text-muted-foreground/80">
+            {row.patient.guardian_type}{" "}
+            {row.patient.guardian_name}
+          </p>
+        ) : null}
+
+        {(row.patient?.patient_code ??
+          row.patient?.account_code ??
+          row.patient_code) ? (
+          <p className="mt-0.5 text-xs text-muted-foreground/80">
+            {row.patient?.patient_code ??
+              row.patient?.account_code ??
+              row.patient_code}
+          </p>
+        ) : null}
+      </div>
+    ),
+  },
+
+  {
+    key: "start_at",
+    header: "Date / Time",
+    render: (value: any, row: any) => (
+      <div className="min-w-[125px]">
+        <p className="text-xs font-medium text-foreground/80">
+          {dateLabel(
+            value ??
+              row.date ??
+              row.appointment_date,
+          )}
+        </p>
+
+        <p className="mt-0.5 text-xs text-muted-foreground/80">
+          {timeLabel(
+            row.time ??
+              row.start_time ??
+              value,
+          )}
+        </p>
+      </div>
+    ),
+  },
+
+  {
+    key: "consult_type",
+    header: "Type",
+    render: (value: any, row: any) => {
+      const type = String(
+        value ??
+          row.type ??
+          "",
+      ).toLowerCase();
+
+      const isClinic =
+        type === "offline" ||
+        type === "clinic";
+
+      const label = isClinic
+        ? "Clinic"
+        : type === "online" ||
+            type === "video"
+          ? "Video"
+          : value ??
+            row.type ??
+            "—";
+
+      return (
+        <span
+          className={[
+            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
+            "text-[12px] font-semibold capitalize",
+            isClinic
+              ? "bg-warning-soft text-warning"
+              : "bg-blue-50 text-blue-600",
+          ].join(" ")}
+        >
+          <span
+            className={[
+              "size-1.5 rounded-full",
+              isClinic
+                ? "bg-amber-500"
+                : "bg-blue-500",
+            ].join(" ")}
+          />
+
+          {label}
+        </span>
+      );
+    },
+  },
+
+  {
+    key: "status",
+    header: "Status",
+    render: (value: any) => {
+      const status = String(
+        value ?? "",
+      ).toLowerCase();
+
+      let label = "—";
+
+      if (status === "scheduled") {
+        label = "Scheduled";
+      } else if (status === "completed") {
+        label = "Completed";
+      } else if (status === "cancelled") {
+        label = "Cancelled";
+      } else if (status === "no_show") {
+        label = "No Show";
+      } else if (status === "unresolved") {
+        label = "Unresolved";
+      } else if (value) {
+        label = String(value)
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, (char) =>
+            char.toUpperCase(),
+          );
+      }
+
+      if (status === "scheduled") {
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-[12px] font-semibold text-blue-600">
+            <span className="size-1.5 rounded-full bg-blue-500" />
+            {label}
+          </span>
+        );
+      }
+
+      if (status === "completed") {
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[12px] font-semibold text-emerald-600">
+            <span className="size-1.5 rounded-full bg-emerald-500" />
+            {label}
+          </span>
+        );
+      }
+
+      if (
+        status === "cancelled" ||
+        status === "no_show"
+      ) {
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-[12px] font-semibold text-red-600">
+            <span className="size-1.5 rounded-full bg-red-500" />
+            {label}
+          </span>
+        );
+      }
+
+      if (status === "unresolved") {
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[12px] font-semibold text-amber-600">
+            <span className="size-1.5 rounded-full bg-amber-500" />
+            {label}
+          </span>
+        );
+      }
+
+      return (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[12px] font-semibold text-muted-foreground">
+          <span className="size-1.5 rounded-full bg-current opacity-70" />
+          {label}
+        </span>
+      );
+    },
+  },
+
+  {
+    key: "amount",
+    header: "Amount",
+    render: (value: any, row: any) => {
+      const amount =
+        value ??
+        row.total_amount ??
+        row.amount ??
+        0;
+
+      const paymentStatus = String(
+        row.payment_status ??
+          row.payment?.status ??
+          row.status_payment ??
+          "",
+      ).toLowerCase();
+
+      const isPaid =
+        paymentStatus === "paid" ||
+        paymentStatus === "success" ||
+        paymentStatus === "completed";
+
+      const isPending =
+        paymentStatus === "pending" ||
+        paymentStatus === "unpaid";
+
+      const isNotRequired =
+        paymentStatus ===
+          "not_required" ||
+        paymentStatus ===
+          "not required" ||
+        Number(amount) === 0 &&
+          !isPending &&
+          !isPaid;
+
+      return (
         <div>
-          <p className="text-xs font-medium text-foreground/80">
-            {row.appointment_code ?? row.appointment_id ?? row.id ?? "—"}
+          <p className="text-xs font-semibold text-foreground">
+            {money(amount)}
           </p>
 
-          {row.token_number ? (
-            <p className="text-xs text-muted-foreground/80">
-              Token {row.token_number}
+          {isPaid ? (
+            <p className="mt-0.5 text-[12px] font-medium text-emerald-600">
+              Paid
+            </p>
+          ) : isPending ? (
+            <p className="mt-0.5 text-[12px] font-medium text-amber-600">
+              Pending
+            </p>
+          ) : isNotRequired ? (
+            <p className="mt-0.5 text-[12px] font-medium text-muted-foreground">
+              Not Required
             </p>
           ) : null}
         </div>
-      ),
+      );
     },
-    {
-      key: "patient",
-      header: "Patient",
-      render: (_value: any, row: any) => (
-        <div>
-          <p className="text-xs font-medium text-foreground/80">
-            {row.patient?.name ?? row.patient?.full_name ?? row.patient_name ?? "—"}
-          </p>
-          <p className="max-w-[180px] truncate text-xs font-normal text-muted-foreground/80">
-            {(row?.patient?.guardian_name && row?.patient?.guardian_type) && row?.patient?.guardian_type + " " + row?.patient?.guardian_name}
-          </p>
-          <p className="text-xs text-muted-foreground/80">
-            {row.patient?.patient_code ?? row.patient?.account_code ?? row.patient_code ?? ""}
-          </p>
-        </div>
-      ),
-    },
-    {
-      key: "doctor",
-      header: "Doctor",
-      render: (_value: any, row: any) => (
-        <span className="text-xs text-foreground/80">
-          {row.doctor?.name ?? row.doctor_name ?? doctorName}
-        </span>
-      ),
-    },
-    {
-      key: "start_at",
-      header: "Date / Time",
-      render: (value: any, row: any) => (
-        <div>
-          <p className="text-xs text-foreground/80">
-            {dateLabel(value ?? row.date ?? row.appointment_date)}
-          </p>
-          <p className="text-xs text-muted-foreground/80">
-            {timeLabel(value ?? row.time)}
-          </p>
-        </div>
-      ),
-    },
-    {
-      key: "consult_type",
-      header: "Type",
-      render: (value: any, row: any) => (
-        <Badge variant="secondary" className="text-xs capitalize">
-          {value ?? row.type ?? "—"}
-        </Badge>
-      ),
-    },
-    {
-      key: "payment_mode",
-      header: "Payment",
-      render: (value: any, row: any) => (
-        <span className="text-xs capitalize text-muted-foreground">
-          {value ?? row.payment_method ?? "—"}
-        </span>
-      ),
-    },
-    {
-      key: "status",
-      header: "Status",
-      render: (value: any) => <Pill value={value} />,
-    },
-    {
-      key: "amount",
-      header: "Amount",
-      render: (value: any, row: any) => (
-        <span className="text-xs font-semibold text-foreground/80">
-          {money(value ?? row.total_amount ?? 0)}
-        </span>
-      ),
-    },
-    {
-      key: "action",
-      header: "",
-      render: (_value: any, row: any) => (
-        <Link
-          href={`/appointments/${row.id ?? row.appointment_id}`}
-          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground/50 transition hover:bg-muted hover:text-muted-foreground"
-        >
-          <ChevronRight className="size-4" />
-        </Link>
-      ),
-    },
-  ];
+  },
+
+  {
+    key: "action",
+    header: "",
+    render: (_value: any, row: any) => (
+      <Link
+        href={`/appointments/${
+          row.id ??
+          row.appointment_id
+        }`}
+        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground/50 transition hover:bg-muted hover:text-muted-foreground"
+      >
+        <ChevronRight className="size-4" />
+      </Link>
+    ),
+  },
+];
 
   return (
     <div className="w-full">
@@ -1368,8 +1544,8 @@ export default function AdminDoctorDetailPage() {
                             }
                           }}
                           className={`h-10 w-full rounded-md border bg-card px-3 text-xs text-foreground/80 outline-none transition focus:ring-2 focus:ring-primary/10 ${formErrors.gender
-                              ? "border-destructive focus:border-destructive focus:ring-destructive/10"
-                              : "border-border focus:border-primary"
+                            ? "border-destructive focus:border-destructive focus:ring-destructive/10"
+                            : "border-border focus:border-primary"
                             }`}
                         >
                           <option value="">Select Gender</option>
@@ -1724,68 +1900,126 @@ export default function AdminDoctorDetailPage() {
             {activeTab === "Appointments" && (
               <div className="space-y-4">
                 <div className="rounded-lg bg-card shadow-sm">
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-[160px_160px_160px_auto] p-4">
-                    <select
-                      value={appointmentStatus}
-                      onChange={(e) => {
-                        setAppointmentStatus(e.target.value);
-                        setAppointmentPage(1);
-                      }}
-                      className="h-10 rounded-md border border-border bg-muted/50 px-3 text-xs text-muted-foreground outline-none focus:bg-card focus:ring-2 focus:ring-primary/10"
-                    >
-                      <option value="">All Statuses</option>
-                      <option value="scheduled">Scheduled</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                      <option value="no_show">No Show</option>
-                    </select>
+                  <div className="border-b border-border/60 px-5 py-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
 
-                    <input
-                      type="date"
-                      value={appointmentStart}
-                      max={appointmentEnd || undefined}
-                      onChange={(e) => setAppointmentStart(e.target.value)}
-                      className="h-10 rounded-md border border-border bg-muted/50 px-3 text-xs text-muted-foreground outline-none focus:bg-card focus:ring-2 focus:ring-primary/10"
-                    />
+                      <div>
+                        <h2 className="text-base font-semibold text-foreground">
+                          Appointment Filters
+                        </h2>
 
-                    <input
-                      type="date"
-                      value={appointmentEnd}
-                      min={appointmentStart || undefined}
-                      onChange={(e) => setAppointmentEnd(e.target.value)}
-                      className="h-10 rounded-md border border-border bg-muted/50 px-3 text-xs text-muted-foreground outline-none focus:bg-card focus:ring-2 focus:ring-primary/10"
-                    />
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Filter this doctor's appointments by status and date.
+                        </p>
+                      </div>
 
-                    <Button
-                      variant="outline"
-                      className="h-10 w-fit px-3 text-xs"
-                      disabled={appointmentsQuery.isFetching}
-                      onClick={() => {
-                        if (
-                          appointmentStart &&
-                          appointmentEnd &&
-                          appointmentStart > appointmentEnd
-                        ) {
-                          return;
-                        }
+                      <div className="flex flex-col gap-2 sm:flex-row">
 
-                        setAppliedAppointmentStatus(appointmentStatus);
-                        setAppliedAppointmentStart(appointmentStart);
-                        setAppliedAppointmentEnd(appointmentEnd);
-                        setAppointmentPage(1);
-                      }}
-                    >
-                      <RefreshCw
-                        className={`mr-1.5 h-3.5 w-3.5 ${appointmentsQuery.isFetching
-                          ? "animate-spin"
-                          : ""
-                          }`}
-                      />
+                        <select
+                          value={appointmentStatus}
+                          onChange={(e) => {
+                            setAppointmentStatus(e.target.value);
+                            setAppointmentPage(1);
+                          }}
+                          className="h-9 min-w-[145px] rounded-md border border-border bg-muted/50 px-3 text-xs text-muted-foreground outline-none transition focus:border-input focus:bg-card focus:ring-2 focus:ring-border/60"
+                        >
+                          <option value="">All statuses</option>
+                          <option value="scheduled">Scheduled</option>
+                          <option value="completed">Completed</option>
+                          <option value="cancelled">Cancelled</option>
+                          <option value="no_show">No-show</option>
+                          <option value="unresolved">Unresolved</option>
+                        </select>
 
-                      {appointmentsQuery.isFetching
-                        ? "Loading..."
-                        : "Filter"}
-                    </Button>
+                        <input
+                          type="date"
+                          value={appointmentStart}
+                          max={appointmentEnd || undefined}
+                          onChange={(e) => {
+                            setAppointmentStart(e.target.value);
+                            setAppointmentPage(1);
+                          }}
+                          className="h-9 rounded-md border border-border bg-muted/50 px-3 text-xs text-muted-foreground outline-none transition focus:border-input focus:bg-card focus:ring-2 focus:ring-border/60"
+                        />
+
+                        <input
+                          type="date"
+                          value={appointmentEnd}
+                          min={appointmentStart || undefined}
+                          onChange={(e) => {
+                            setAppointmentEnd(e.target.value);
+                            setAppointmentPage(1);
+                          }}
+                          className="h-9 rounded-md border border-border bg-muted/50 px-3 text-xs text-muted-foreground outline-none transition focus:border-input focus:bg-card focus:ring-2 focus:ring-border/60"
+                        />
+
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-9 gap-1.5 px-3 text-xs"
+                          disabled={appointmentsQuery.isFetching}
+                          onClick={() => {
+                            if (
+                              appointmentStart &&
+                              appointmentEnd &&
+                              appointmentStart > appointmentEnd
+                            ) {
+                              return;
+                            }
+
+                            setAppliedAppointmentStatus(
+                              appointmentStatus,
+                            );
+
+                            setAppliedAppointmentStart(
+                              appointmentStart,
+                            );
+
+                            setAppliedAppointmentEnd(
+                              appointmentEnd,
+                            );
+
+                            setAppointmentPage(1);
+                          }}
+                        >
+                          <RefreshCw
+                            className={
+                              appointmentsQuery.isFetching
+                                ? "size-3.5 animate-spin"
+                                : "size-3.5"
+                            }
+                          />
+
+                          {appointmentsQuery.isFetching
+                            ? "Loading..."
+                            : "Filter"}
+                        </Button>
+
+                        {(appointmentStatus ||
+                          appointmentStart ||
+                          appointmentEnd) && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="h-9 px-3 text-xs"
+                              disabled={appointmentsQuery.isFetching}
+                              onClick={() => {
+                                setAppointmentStatus("");
+                                setAppointmentStart("");
+                                setAppointmentEnd("");
+
+                                setAppliedAppointmentStatus("");
+                                setAppliedAppointmentStart("");
+                                setAppliedAppointmentEnd("");
+
+                                setAppointmentPage(1);
+                              }}
+                            >
+                              Clear
+                            </Button>
+                          )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -1809,14 +2043,31 @@ export default function AdminDoctorDetailPage() {
                         />
                       </div>
 
-                      <StandardPagination
-                        currentPage={Number(appointmentCurrentPage)}
-                        lastPage={Number(appointmentLastPage)}
-                        total={Number(appointmentTotal)}
-                        from={Number(appointmentFrom)}
-                        to={Number(appointmentTo)}
-                        onPageChange={setAppointmentPage}
-                      />
+                      <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-xs text-muted-foreground/80">
+                          Showing{" "}
+                          <span className="font-medium text-muted-foreground">
+                            {appointmentFrom}
+                          </span>
+                          {" – "}
+                          <span className="font-medium text-muted-foreground">
+                            {appointmentTo}
+                          </span>
+                          {" of "}
+                          <span className="font-medium text-muted-foreground">
+                            {appointmentTotal}
+                          </span>
+                        </p>
+
+                        <Pagination
+                          currentPage={Number(appointmentCurrentPage)}
+                          totalPages={Number(appointmentLastPage)}
+                          disabled={appointmentsQuery.isFetching}
+                          onPageChange={(nextPage) => {
+                            setAppointmentPage(nextPage);
+                          }}
+                        />
+                      </div>
                     </>
                   ) : (
                     <EmptyState
@@ -1874,7 +2125,7 @@ export default function AdminDoctorDetailPage() {
                 <div className="rounded-lg bg-card shadow-sm">
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between p-4">
                     <div>
-                      <h2 className="text-sm font-semibold text-foreground">
+                      <h2 className="text-md font-semibold text-foreground">
                         Earnings Range
                       </h2>
 
