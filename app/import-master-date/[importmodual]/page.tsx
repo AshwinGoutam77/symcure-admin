@@ -392,37 +392,7 @@ export default function MasterDataImportPage() {
 
         <div>
 
-          {/* Breadcrumb */}
-          <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground/80">
-
-            <span>
-              Administration
-            </span>
-
-            <span className="text-muted-foreground/50">
-              /
-            </span>
-
-            <span>
-              Master Data
-            </span>
-
-            <span className="text-muted-foreground/50">
-              /
-            </span>
-
-            <span className="text-muted-foreground">
-              Import
-            </span>
-
-          </div>
-
           <div className="flex items-center gap-3">
-
-            <div className="flex size-10 items-center justify-center rounded-lg border border-border bg-muted/50 text-xl">
-              {config.icon}
-            </div>
-
             <div>
 
               <h1 className="text-2xl font-semibold leading-tight tracking-tight text-foreground">
@@ -439,19 +409,6 @@ export default function MasterDataImportPage() {
           </div>
 
         </div>
-
-        <Button
-          asChild
-          variant="outline"
-          size="sm"
-          className="h-9"
-        >
-          <Link href="/dashboard">
-            <ArrowLeft className="mr-2 size-4" />
-            Back
-          </Link>
-        </Button>
-
       </div>
 
       {/* =====================================================
