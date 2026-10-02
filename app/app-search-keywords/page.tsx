@@ -49,6 +49,7 @@ type KeywordSpecialization = {
 };
 
 type KeywordRow = {
+  [x: string]: never[];
   id: number;
   keyword: string;
   is_active: boolean;
@@ -891,7 +892,7 @@ export default function AppSearchKeywordsPage() {
             row as KeywordRow;
 
           const items =
-            keywordRow.specializations ??
+            keywordRow?.specializations ??
             [];
 
           if (!items.length) {
