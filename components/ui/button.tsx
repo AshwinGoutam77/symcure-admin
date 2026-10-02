@@ -21,10 +21,10 @@ export type ButtonSize =
 
 const variantClasses: Record<ButtonVariant, string> = {
   default:
-    "cursor-pointer bg-[#438ae8] text-white border border-blue-600 hover:bg-[#016bff] hover:border-blue-700 active:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600",
+    "cursor-pointer bg-[#438ae8] text-white hover:bg-[#016bff] hover:border-blue-700 active:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600",
 
   primary:
-    "cursor-pointer bg-[#438ae8] text-white border border-blue-600 hover:bg-[#016bff] hover:border-blue-700 active:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600",
+    "cursor-pointer bg-[#438ae8] text-white hover:bg-[#016bff] hover:border-blue-700 active:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600",
 
   secondary:
     "cursor-pointer bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 active:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600",

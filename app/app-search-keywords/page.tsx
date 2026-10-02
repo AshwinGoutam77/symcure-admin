@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  ChevronLeft,
-  ChevronRight,
   Pencil,
   Plus,
   RefreshCw,
@@ -16,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
+import { Pagination } from "@/components/pagination";
 
 import {
   createAppSearchKeyword,
@@ -29,9 +28,9 @@ import {
 
 import { useAdminQuery } from "@/hooks/use-admin-api";
 
-/* ========================================================================== */
-/* TYPES                                                                      */
-/* ========================================================================== */
+/* ==========================================================================
+   TYPES
+========================================================================== */
 
 type SpecializationOption = {
   id: number;
@@ -52,14 +51,12 @@ type KeywordSpecialization = {
 type KeywordRow = {
   id: number;
   keyword: string;
-
   is_active: boolean;
 
   specialization_count: number;
   doctor_count: number;
 
   qualification_specialization_ids?: number[];
-
   qualification_specializations?: KeywordSpecialization[];
 
   created_at?: string;
@@ -79,9 +76,9 @@ type PaginationMeta = {
   last_page?: number;
 };
 
-/* ========================================================================== */
-/* HELPERS                                                                    */
-/* ========================================================================== */
+/* ==========================================================================
+   HELPERS
+========================================================================== */
 
 function normalizeId(value: unknown): number {
   const id = Number(value);
@@ -102,7 +99,7 @@ function getSpecializationName(
 }
 
 /**
- * Supports all of these possible API shapes:
+ * Supports:
  *
  * 1. { data: [...], meta: {...} }
  * 2. { data: { data: [...], meta: {...} } }
@@ -145,26 +142,21 @@ function extractMeta(
  *
  * { keyword, is_active, qualification_specialization_ids: [...] }
  *
- * OR
+ * OR:
  *
  * { data: { keyword, ... } }
  */
-function extractDetail(payload: any): any {
+function extractDetail(
+  payload: any,
+): any {
   if (!payload) {
     return null;
   }
 
-  // Actual API response:
-  // {
-  //   search_keyword: {
-  //     ...
-  //   }
-  // }
   if (payload?.search_keyword) {
     return payload.search_keyword;
   }
 
-  // Fallbacks
   if (payload?.data?.search_keyword) {
     return payload.data.search_keyword;
   }
@@ -186,7 +178,7 @@ function extractSelectedSpecializationIds(
   const ids = new Set<number>();
 
   const addId = (value: any) => {
-    const id = Number(value);
+    const id = normalizeId(value);
 
     if (
       Number.isFinite(id) &&
@@ -196,9 +188,9 @@ function extractSelectedSpecializationIds(
     }
   };
 
-  /* ============================================================
+  /* ------------------------------------------------------------------------
      DIRECT ID ARRAYS
-  ============================================================ */
+  ------------------------------------------------------------------------ */
 
   const directIdFields = [
     "qualification_specialization_ids",
@@ -227,9 +219,9 @@ function extractSelectedSpecializationIds(
     }
   }
 
-  /* ============================================================
+  /* ------------------------------------------------------------------------
      OBJECT ARRAYS
-  ============================================================ */
+  ------------------------------------------------------------------------ */
 
   const objectFields = [
     "qualification_specializations",
@@ -272,9 +264,9 @@ function extractSelectedSpecializationIds(
     }
   }
 
-  /* ============================================================
+  /* ------------------------------------------------------------------------
      NESTED DATA FALLBACK
-  ============================================================ */
+  ------------------------------------------------------------------------ */
 
   if (
     ids.size === 0 &&
@@ -304,28 +296,22 @@ function extractOptions(
     return payload;
   }
 
-  // unwrapData() may return:
-  // { options: [...] }
   if (Array.isArray(payload?.options)) {
     return payload.options;
   }
 
-  // { data: { options: [...] } }
   if (Array.isArray(payload?.data?.options)) {
     return payload.data.options;
   }
 
-  // { data: [...] }
   if (Array.isArray(payload?.data)) {
     return payload.data;
   }
 
-  // { data: { data: [...] } }
   if (Array.isArray(payload?.data?.data)) {
     return payload.data.data;
   }
 
-  // fallback
   if (
     Array.isArray(
       payload?.qualification_specializations,
@@ -337,14 +323,14 @@ function extractOptions(
   return [];
 }
 
-/* ========================================================================== */
-/* PAGE                                                                       */
-/* ========================================================================== */
+/* ==========================================================================
+   PAGE
+========================================================================== */
 
 export default function AppSearchKeywordsPage() {
-  /* ------------------------------------------------------------------------ */
-  /* LIST FILTERS                                                             */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     LIST FILTERS
+  ------------------------------------------------------------------------ */
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -352,9 +338,9 @@ export default function AppSearchKeywordsPage() {
 
   const limit = 20;
 
-  /* ------------------------------------------------------------------------ */
-  /* LIST API                                                                  */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     LIST API
+  ------------------------------------------------------------------------ */
 
   const {
     data,
@@ -381,9 +367,9 @@ export default function AppSearchKeywordsPage() {
     ],
   );
 
-  /* ------------------------------------------------------------------------ */
-  /* NORMALIZE LIST RESPONSE                                                   */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     NORMALIZE LIST RESPONSE
+  ------------------------------------------------------------------------ */
 
   const payload: any = data ?? {};
 
@@ -407,9 +393,25 @@ export default function AppSearchKeywordsPage() {
   const lastPage =
     Number(meta.last_page) || 1;
 
-  /* ------------------------------------------------------------------------ */
-  /* MODAL                                                                     */
-  /* ------------------------------------------------------------------------ */
+  const perPage =
+    Number(meta.per_page) || limit;
+
+  const startRecord =
+    total === 0
+      ? 0
+      : (currentPage - 1) * perPage + 1;
+
+  const endRecord =
+    total === 0
+      ? 0
+      : Math.min(
+          startRecord + rows.length - 1,
+          total,
+        );
+
+  /* ------------------------------------------------------------------------
+     MODAL
+  ------------------------------------------------------------------------ */
 
   const [showModal, setShowModal] =
     useState(false);
@@ -436,9 +438,9 @@ export default function AppSearchKeywordsPage() {
   const [modalError, setModalError] =
     useState<string | null>(null);
 
-  /* ------------------------------------------------------------------------ */
-  /* STATUS / DELETE LOADING                                                   */
-  /* ------------------------------------------------------------------------ */
+  /* ------------------------------------------------------------------------
+     STATUS / DELETE LOADING
+  ------------------------------------------------------------------------ */
 
   const [statusId, setStatusId] =
     useState<number | null>(null);
@@ -446,14 +448,21 @@ export default function AppSearchKeywordsPage() {
   const [deletingId, setDeletingId] =
     useState<number | null>(null);
 
-  /* ======================================================================== */
-  /* LOAD SPECIALIZATION OPTIONS                                               */
-  /* ======================================================================== */
+    const [deleteTarget, setDeleteTarget] =
+  useState<KeywordRow | null>(null);
+
+const [deleteError, setDeleteError] =
+  useState<string | null>(null);
+
+  /* ==========================================================================
+     LOAD SPECIALIZATION OPTIONS
+  ========================================================================== */
 
   const loadSpecializationOptions =
     async () => {
       try {
         setOptionsLoading(true);
+        setModalError(null);
 
         const response =
           await getAppSearchKeywordSpecializationOptions(
@@ -480,9 +489,9 @@ export default function AppSearchKeywordsPage() {
       }
     };
 
-  /* ======================================================================== */
-  /* OPEN ADD MODAL                                                            */
-  /* ======================================================================== */
+  /* ==========================================================================
+     OPEN ADD MODAL
+  ========================================================================== */
 
   const openAddModal = async () => {
     setEditingId(null);
@@ -494,165 +503,136 @@ export default function AppSearchKeywordsPage() {
     });
 
     setModalError(null);
+    setOptions([]);
     setShowModal(true);
 
     await loadSpecializationOptions();
   };
 
-  /* ======================================================================== */
-  /* OPEN EDIT MODAL                                                           */
-  /* ======================================================================== */
+  /* ==========================================================================
+     OPEN EDIT MODAL
+  ========================================================================== */
 
-const openEditModal = async (
-  row: KeywordRow,
-) => {
-  try {
-    setModalError(null);
+  const openEditModal = async (
+    row: KeywordRow,
+  ) => {
+    try {
+      setModalError(null);
+      setEditingId(row.id);
 
-    setEditingId(row.id);
+      /*
+       * Open immediately with table data.
+       */
+      setForm({
+        keyword: row.keyword ?? "",
+        is_active: Boolean(row.is_active),
+        qualification_specialization_ids:
+          Array.isArray(
+            row.qualification_specialization_ids,
+          )
+            ? row.qualification_specialization_ids
+                .map(Number)
+                .filter(
+                  (id) =>
+                    Number.isFinite(id) &&
+                    id > 0,
+                )
+            : [],
+      });
 
-    /*
-     * Open modal immediately with the information
-     * already available from the table.
-     */
-    setForm({
-      keyword: row.keyword ?? "",
-      is_active: Boolean(row.is_active),
-      qualification_specialization_ids:
+      setShowModal(true);
+
+      /*
+       * Load options and detail together.
+       */
+      const [
+        optionsResponse,
+        detailResponse,
+      ] = await Promise.all([
+        getAppSearchKeywordSpecializationOptions(
+          {
+            limit: 500,
+          },
+        ),
+
+        getAppSearchKeyword(
+          String(row.id),
+        ),
+      ]);
+
+      const specializationOptions =
+        extractOptions(
+          optionsResponse,
+        );
+
+      setOptions(
+        specializationOptions,
+      );
+
+      const detail =
+        extractDetail(
+          detailResponse,
+        );
+
+      let selectedIds =
+        extractSelectedSpecializationIds(
+          detail,
+        );
+
+      /*
+       * Fallback to row data.
+       */
+      if (
+        selectedIds.length === 0 &&
         Array.isArray(
           row.qualification_specialization_ids,
         )
-          ? row.qualification_specialization_ids
-              .map(Number)
-              .filter(
-                (id) =>
-                  Number.isFinite(id) &&
-                  id > 0,
+      ) {
+        selectedIds =
+          row.qualification_specialization_ids
+            .map(Number)
+            .filter(
+              (id) =>
+                Number.isFinite(id) &&
+                id > 0,
+            );
+      }
+
+      setForm({
+        keyword:
+          detail?.keyword ??
+          row.keyword ??
+          "",
+
+        is_active:
+          detail?.is_active !==
+          undefined
+            ? Boolean(
+                detail.is_active,
               )
-          : [],
-    });
+            : Boolean(
+                row.is_active,
+              ),
 
-    setShowModal(true);
-
-    /* ==========================================================
-       LOAD OPTIONS + DETAIL
-    ========================================================== */
-
-    const [
-      optionsResponse,
-      detailResponse,
-    ] = await Promise.all([
-      getAppSearchKeywordSpecializationOptions(
-        {
-          limit: 500,
-        },
-      ),
-
-      getAppSearchKeyword(
-        String(row.id),
-      ),
-    ]);
-
-    /* ==========================================================
-       SPECIALIZATION OPTIONS
-    ========================================================== */
-
-    const specializationOptions =
-      extractOptions(
-        optionsResponse,
+        qualification_specialization_ids:
+          selectedIds,
+      });
+    } catch (err: any) {
+      console.error(
+        "Unable to load keyword:",
+        err,
       );
 
-    setOptions(
-      specializationOptions,
-    );
-
-    /* ==========================================================
-       DETAIL
-    ========================================================== */
-
-    const detail =
-      extractDetail(
-        detailResponse,
+      setModalError(
+        err?.message ??
+          "Unable to load keyword details.",
       );
-
-    console.log(
-      "EDIT KEYWORD DETAIL:",
-      detail,
-    );
-
-    /* ==========================================================
-       GET SELECTED SPECIALIZATION IDS
-    ========================================================== */
-
-    let selectedIds =
-      extractSelectedSpecializationIds(
-        detail,
-      );
-
-    /*
-     * Fallback to row data if the detail API
-     * doesn't return specialization IDs.
-     */
-    if (
-      selectedIds.length === 0 &&
-      Array.isArray(
-        row.qualification_specialization_ids,
-      )
-    ) {
-      selectedIds =
-        row.qualification_specialization_ids
-          .map(Number)
-          .filter(
-            (id) =>
-              Number.isFinite(id) &&
-              id > 0,
-          );
     }
+  };
 
-    console.log(
-      "SELECTED SPECIALIZATION IDS:",
-      selectedIds,
-    );
-
-    /* ==========================================================
-       UPDATE FORM
-    ========================================================== */
-
-    setForm({
-      keyword:
-        detail?.keyword ??
-        row.keyword ??
-        "",
-
-      is_active:
-        detail?.is_active !==
-        undefined
-          ? Boolean(
-              detail.is_active,
-            )
-          : Boolean(
-              row.is_active,
-            ),
-
-      qualification_specialization_ids:
-        selectedIds,
-    });
-  } catch (err: any) {
-    console.error(
-      "Unable to load keyword:",
-      err,
-    );
-
-    setModalError(
-      err?.message ??
-        "Unable to load keyword details.",
-    );
-  }
-};
-
-  /* ======================================================================== */
-  /* CLOSE MODAL                                                               */
-  /* ======================================================================== */
+  /* ==========================================================================
+     CLOSE MODAL
+  ========================================================================== */
 
   const closeModal = () => {
     if (saving) {
@@ -672,42 +652,42 @@ const openEditModal = async (
     setModalError(null);
   };
 
-  /* ======================================================================== */
-  /* SPECIALIZATION TOGGLE                                                     */
-  /* ======================================================================== */
+  /* ==========================================================================
+     SPECIALIZATION TOGGLE
+  ========================================================================== */
 
-const toggleSpecialization = (
-  id: number,
-) => {
-  const numericId = Number(id);
+  const toggleSpecialization = (
+    id: number,
+  ) => {
+    const numericId = Number(id);
 
-  setForm((current) => {
-    const exists =
-      current.qualification_specialization_ids.includes(
-        numericId,
-      );
+    setForm((current) => {
+      const exists =
+        current.qualification_specialization_ids.includes(
+          numericId,
+        );
 
-    return {
-      ...current,
+      return {
+        ...current,
 
-      qualification_specialization_ids:
-        exists
-          ? current.qualification_specialization_ids.filter(
-              (item) =>
-                Number(item) !==
+        qualification_specialization_ids:
+          exists
+            ? current.qualification_specialization_ids.filter(
+                (item) =>
+                  Number(item) !==
+                  numericId,
+              )
+            : [
+                ...current.qualification_specialization_ids,
                 numericId,
-            )
-          : [
-              ...current.qualification_specialization_ids,
-              numericId,
-            ],
-    };
-  });
-};
+              ],
+      };
+    });
+  };
 
-  /* ======================================================================== */
-  /* SAVE                                                                      */
-  /* ======================================================================== */
+  /* ==========================================================================
+     SAVE
+  ========================================================================== */
 
   const handleSave = async () => {
     const keyword =
@@ -734,10 +714,6 @@ const toggleSpecialization = (
       setSaving(true);
       setModalError(null);
 
-      /*
-       * IMPORTANT:
-       * Backend requires is_active.
-       */
       const body = {
         keyword,
 
@@ -759,19 +735,13 @@ const toggleSpecialization = (
         );
       }
 
-      /*
-       * Do not call closeModal() here because
-       * saving is still true and closeModal()
-       * intentionally blocks while saving.
-       */
       setShowModal(false);
       setEditingId(null);
 
       setForm({
         keyword: "",
         is_active: true,
-        qualification_specialization_ids:
-          [],
+        qualification_specialization_ids: [],
       });
 
       setOptions([]);
@@ -793,9 +763,9 @@ const toggleSpecialization = (
     }
   };
 
-  /* ======================================================================== */
-  /* STATUS                                                                     */
-  /* ======================================================================== */
+  /* ==========================================================================
+     STATUS
+  ========================================================================== */
 
   const handleStatus = async (
     row: KeywordRow,
@@ -824,48 +794,59 @@ const toggleSpecialization = (
     }
   };
 
-  /* ======================================================================== */
-  /* DELETE                                                                     */
-  /* ======================================================================== */
+  /* ==========================================================================
+     DELETE
+  ========================================================================== */
 
-  const handleDelete = async (
-    row: KeywordRow,
-  ) => {
-    const confirmed =
-      window.confirm(
-        `Delete keyword "${row.keyword}"?`,
-      );
+const openDeleteModal = (row: KeywordRow) => {
+  setDeleteTarget(row);
+  setDeleteError(null);
+};
 
-    if (!confirmed) {
-      return;
-    }
+const closeDeleteModal = () => {
+  if (deletingId !== null) {
+    return;
+  }
 
-    try {
-      setDeletingId(row.id);
+  setDeleteTarget(null);
+  setDeleteError(null);
+};
 
-      await deleteAppSearchKeyword(
-        String(row.id),
-      );
+const handleDelete = async () => {
+  if (!deleteTarget) {
+    return;
+  }
 
-      await refetch();
-    } catch (err: any) {
-      console.error(
-        "Unable to delete keyword:",
-        err,
-      );
+  try {
+    setDeletingId(deleteTarget.id);
+    setDeleteError(null);
 
-      window.alert(
-        err?.message ??
-          "Unable to delete keyword.",
-      );
-    } finally {
-      setDeletingId(null);
-    }
-  };
+    await deleteAppSearchKeyword(
+      String(deleteTarget.id),
+    );
 
-  /* ======================================================================== */
-  /* RESET PAGE WHEN FILTER CHANGES                                            */
-  /* ======================================================================== */
+    setDeleteTarget(null);
+    setDeleteError(null);
+
+    await refetch();
+  } catch (err: any) {
+    console.error(
+      "Unable to delete keyword:",
+      err,
+    );
+
+    setDeleteError(
+      err?.message ??
+        "Unable to delete keyword.",
+    );
+  } finally {
+    setDeletingId(null);
+  }
+};
+
+  /* ==========================================================================
+     RESET PAGE WHEN FILTER CHANGES
+  ========================================================================== */
 
   useEffect(() => {
     if (
@@ -876,230 +857,213 @@ const toggleSpecialization = (
     }
   }, [page, lastPage]);
 
-  /* ======================================================================== */
-  /* TABLE COLUMNS                                                             */
-  /* ======================================================================== */
+  /* ==========================================================================
+     TABLE COLUMNS
+  ========================================================================== */
 
-  const columns = useMemo(
-    () => [
-      {
-        header: "Keyword",
-        key: "keyword",
+const columns = useMemo(
+  () => [
+    {
+      header: "Keyword",
+      key: "keyword",
 
-        render: (
-          value: string,
-        ) => (
-          <span className="font-medium text-foreground">
+      render: (
+        value: string,
+      ) => (
+        <div className="min-w-[140px]">
+          <span className="text-xs font-semibold text-foreground">
             {value || "—"}
           </span>
-        ),
-      },
+        </div>
+      ),
+    },
 
-      {
-        header:
-          "Qualification / Specialization",
-        key: "qualification_specializations",
+    {
+      header:
+        "Qualification / Specialization",
+      key: "qualification_specializations",
 
-        render: (
-          _: unknown,
-          row: KeywordRow,
-        ) => {
-          const items =
-            row.qualification_specializations ??
-            [];
+      render: (
+        _: unknown,
+        row: Record<string, any>,
+      ) => {
+        const keywordRow =
+          row as KeywordRow;
 
-          if (!items.length) {
-            return (
-              <span className="text-xs text-muted-foreground">
-                {row.specialization_count
-                  ? `${row.specialization_count} specialization${
-                      row.specialization_count ===
-                      1
-                        ? ""
-                        : "s"
-                    }`
-                  : "—"}
-              </span>
-            );
-          }
+        const items =
+          keywordRow.qualification_specializations ??
+          [];
 
+        if (!items.length) {
           return (
-            <div className="flex max-w-[420px] flex-wrap gap-1">
-              {items.map(
-                (
-                  item,
-                  index,
-                ) => {
-                  const name =
-                    item.name ??
-                    item.specialization_name ??
-                    item.qualification_specialization_name ??
-                    `#${item.id}`;
-
-                  return (
-                    <span
-                      key={
-                        item.id ??
-                        `${name}-${index}`
-                      }
-                      className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
-                    >
-                      {name}
-                    </span>
-                  );
-                },
-              )}
-            </div>
+            <span className="text-xs text-muted-foreground">
+              {keywordRow.specialization_count
+                ? `${keywordRow.specialization_count} specialization${
+                    keywordRow.specialization_count ===
+                    1
+                      ? ""
+                      : "s"
+                  }`
+                : "—"}
+            </span>
           );
-        },
+        }
+
+        return (
+          <div className="flex max-w-[430px] flex-wrap gap-1">
+            {items.map(
+              (
+                item,
+                index,
+              ) => {
+                const name =
+                  item.name ??
+                  item.specialization_name ??
+                  item.qualification_specialization_name ??
+                  `#${item.id}`;
+
+                return (
+                  <span
+                    key={
+                      item.id ??
+                      `${name}-${index}`
+                    }
+                    className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                  >
+                    {name}
+                  </span>
+                );
+              },
+            )}
+          </div>
+        );
       },
+    },
 
-      {
-        header: "Doctors",
-        key: "doctor_count",
+    {
+      header: "Doctors",
+      key: "doctor_count",
 
-        render: (
-          value: number,
-        ) => (
-          <span className="text-xs text-muted-foreground">
-            {Number(value) || 0}
-          </span>
-        ),
+      render: (
+        value: number,
+      ) => (
+        <span className="text-xs font-medium text-foreground/80">
+          {Number(value) || 0}
+        </span>
+      ),
+    },
+
+    {
+      header: "Status",
+      key: "is_active",
+
+      render: (
+        value: boolean,
+      ) => {
+        const active =
+          Boolean(value);
+
+        return (
+          <StatusBadge
+            status={
+              active
+                ? "active"
+                : "pending"
+            }
+          >
+            {active
+              ? "Active"
+              : "Inactive"}
+          </StatusBadge>
+        );
       },
+    },
 
-      {
-        header: "Status",
-        key: "is_active",
+    {
+      header: "Actions",
+      key: "actions",
 
-        render: (
-          value: boolean,
-        ) => {
-          const active =
-            Boolean(value);
+      render: (
+        _: unknown,
+        row: Record<string, any>,
+      ) => {
+        const keywordRow =
+          row as KeywordRow;
 
-          return (
-            <StatusBadge
-              status={
-                active
-                  ? "active"
-                  : "pending"
+        const updating =
+          statusId === keywordRow.id;
+
+        const deleting =
+          deletingId === keywordRow.id;
+
+        return (
+          <div className="flex items-center justify-start gap-1">
+            {/* EDIT */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-muted-foreground hover:bg-muted hover:text-foreground"
+              title="Edit keyword"
+              onClick={() =>
+                openEditModal(
+                  keywordRow,
+                )
+              }
+              disabled={
+                updating ||
+                deleting
               }
             >
-              {active
-                ? "Active"
-                : "Inactive"}
-            </StatusBadge>
-          );
-        },
+              <Pencil className="size-3.5" />
+            </Button>
+
+            {/* DELETE */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+              title="Delete keyword"
+              onClick={() =>
+                openDeleteModal(
+                  keywordRow,
+                )
+              }
+              disabled={
+                updating ||
+                deleting
+              }
+            >
+              {deleting ? (
+                <RefreshCw className="size-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="size-3.5" />
+              )}
+            </Button>
+          </div>
+        );
       },
+    },
+  ],
+  [
+    statusId,
+    deletingId,
+  ],
+);
 
-      {
-        header: "Actions",
-        key: "actions",
-
-        render: (
-          _: unknown,
-          row: KeywordRow,
-        ) => {
-          const updating =
-            statusId === row.id;
-
-          const deleting =
-            deletingId === row.id;
-
-          return (
-            <div className="flex items-center gap-1">
-              {/* EDIT */}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                title="Edit"
-                onClick={() =>
-                  openEditModal(row)
-                }
-                disabled={
-                  updating ||
-                  deleting
-                }
-              >
-                <Pencil className="size-4" />
-              </Button>
-
-              {/* STATUS */}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 min-w-8 px-1.5"
-                title={
-                  row.is_active
-                    ? "Deactivate"
-                    : "Activate"
-                }
-                onClick={() =>
-                  handleStatus(row)
-                }
-                disabled={
-                  updating ||
-                  deleting
-                }
-              >
-                {updating ? (
-                  <RefreshCw className="size-3.5 animate-spin" />
-                ) : (
-                  <span className="text-[10px] font-medium">
-                    {row.is_active
-                      ? "OFF"
-                      : "ON"}
-                  </span>
-                )}
-              </Button>
-
-              {/* DELETE */}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                title="Delete"
-                onClick={() =>
-                  handleDelete(row)
-                }
-                disabled={
-                  updating ||
-                  deleting
-                }
-              >
-                {deleting ? (
-                  <RefreshCw className="size-4 animate-spin" />
-                ) : (
-                  <Trash2 className="size-4" />
-                )}
-              </Button>
-            </div>
-          );
-        },
-      },
-    ],
-    [
-      statusId,
-      deletingId,
-    ],
-  );
-
-  /* ======================================================================== */
-  /* RENDER                                                                    */
-  /* ======================================================================== */
+  /* ==========================================================================
+     RENDER
+  ========================================================================== */
 
   return (
     <>
       <div className="w-full">
         <div className="flex w-full flex-col gap-5">
-          {/* ================================================================== */}
-          {/* HEADER                                                             */}
-          {/* ================================================================== */}
+
+          {/* ==================================================================
+              PAGE HEADER
+          ================================================================== */}
 
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -1127,7 +1091,7 @@ const toggleSpecialization = (
 
             <Button
               type="button"
-              className="h-9 gap-1.5 text-xs"
+              className="h-9 gap-1.5 text-xs font-semibold"
               onClick={openAddModal}
             >
               <Plus className="size-4" />
@@ -1135,9 +1099,9 @@ const toggleSpecialization = (
             </Button>
           </div>
 
-          {/* ================================================================== */}
-          {/* API ERROR                                                          */}
-          {/* ================================================================== */}
+          {/* ==================================================================
+              API ERROR
+          ================================================================== */}
 
           {error && (
             <div className="rounded-lg border border-destructive/25 bg-destructive-soft px-4 py-3 text-xs text-destructive">
@@ -1145,23 +1109,25 @@ const toggleSpecialization = (
             </div>
           )}
 
-          {/* ================================================================== */}
-          {/* TABLE                                                              */}
-          {/* ================================================================== */}
+          {/* ==================================================================
+              KEYWORDS SECTION
+          ================================================================== */}
 
           <section className="overflow-hidden rounded-lg bg-card shadow-sm">
-            {/* ---------------------------------------------------------------- */}
-            {/* TABLE HEADER                                                     */}
-            {/* ---------------------------------------------------------------- */}
 
-            <div className="border-b border-border/60">
-              <div className="flex flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+            {/* ----------------------------------------------------------------
+                SECTION HEADER
+            ---------------------------------------------------------------- */}
+
+            <div className="border-b border-border/60 px-5 py-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+
                 <div>
                   <h2 className="text-base font-semibold text-foreground">
                     Keywords
                   </h2>
 
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-0.5 text-xs text-muted-foreground/80">
                     {isLoading
                       ? "Loading keywords..."
                       : `${total} keyword${
@@ -1173,10 +1139,13 @@ const toggleSpecialization = (
                 </div>
 
                 {/* FILTERS */}
+
                 <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+
                   {/* SEARCH */}
+
                   <div className="relative w-full sm:w-[300px]">
-                    <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/80" />
+                    <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/70" />
 
                     <Input
                       value={search}
@@ -1197,7 +1166,8 @@ const toggleSpecialization = (
                           setSearch("");
                           setPage(1);
                         }}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/80 transition hover:text-foreground"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 transition hover:text-foreground"
+                        aria-label="Clear search"
                       >
                         <X className="size-4" />
                       </button>
@@ -1205,6 +1175,7 @@ const toggleSpecialization = (
                   </div>
 
                   {/* STATUS */}
+
                   <select
                     value={status}
                     onChange={(event) => {
@@ -1229,6 +1200,7 @@ const toggleSpecialization = (
                   </select>
 
                   {/* REFRESH */}
+
                   <Button
                     type="button"
                     variant="outline"
@@ -1240,11 +1212,11 @@ const toggleSpecialization = (
                     disabled={isLoading}
                   >
                     <RefreshCw
-                      className={`size-3.5 ${
+                      className={
                         isLoading
-                          ? "animate-spin"
-                          : ""
-                      }`}
+                          ? "size-3.5 animate-spin"
+                          : "size-3.5"
+                      }
                     />
 
                     Refresh
@@ -1253,34 +1225,62 @@ const toggleSpecialization = (
               </div>
             </div>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* DATA TABLE                                                        */}
-            {/* ---------------------------------------------------------------- */}
+            {/* ----------------------------------------------------------------
+                TABLE ERROR
+            ---------------------------------------------------------------- */}
 
-            <div className="p-0">
+            {error && (
+              <div className="border-b border-destructive/25 bg-destructive-soft px-5 py-3 text-xs text-destructive">
+                {error.message}
+              </div>
+            )}
+
+            {/* ----------------------------------------------------------------
+                TABLE
+            ---------------------------------------------------------------- */}
+
+            <div className="overflow-x-auto px-5 mt-5">
               {isLoading ? (
-                <div className="flex min-h-[240px] items-center justify-center">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <RefreshCw className="size-4 animate-spin" />
+                <div className="flex min-h-[280px] items-center justify-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <RefreshCw className="size-5 animate-spin text-primary" />
 
-                    Loading keywords...
+                    <p className="text-xs text-muted-foreground">
+                      Loading keywords...
+                    </p>
                   </div>
                 </div>
               ) : rows.length === 0 ? (
-                <div className="flex min-h-[240px] flex-col items-center justify-center px-5 text-center">
-                  <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                    <Search className="size-4 text-muted-foreground" />
+                <div className="flex min-h-[280px] flex-col items-center justify-center px-5 text-center">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted">
+                    <Search className="size-5 text-muted-foreground" />
                   </div>
 
-                  <p className="text-sm font-medium text-foreground">
+                  <p className="mt-3 text-sm font-semibold text-foreground">
                     No keywords found
                   </p>
 
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Try changing your
-                    search or status
-                    filter.
+                  <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                    Try changing your search
+                    or status filter.
                   </p>
+
+                  {(search ||
+                    status) && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-4 h-8 text-xs"
+                      onClick={() => {
+                        setSearch("");
+                        setStatus("");
+                        setPage(1);
+                      }}
+                    >
+                      Clear filters
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <DataTable
@@ -1290,95 +1290,75 @@ const toggleSpecialization = (
               )}
             </div>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* PAGINATION                                                        */}
-            {/* ---------------------------------------------------------------- */}
+            {/* ----------------------------------------------------------------
+                PAGINATION
+            ---------------------------------------------------------------- */}
 
             {!isLoading &&
               rows.length > 0 && (
                 <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-xs text-muted-foreground">
-                    Page{" "}
-                    <span className="font-medium text-foreground">
-                      {currentPage}
-                    </span>{" "}
-                    of{" "}
-                    <span className="font-medium text-foreground">
-                      {lastPage}
+
+                  <p className="text-xs text-muted-foreground/80">
+                    Showing{" "}
+                    <span className="font-medium text-muted-foreground">
+                      {startRecord}
                     </span>
-
-                    <span className="mx-1">
-                      •
+                    {" – "}
+                    <span className="font-medium text-muted-foreground">
+                      {endRecord}
                     </span>
+                    {" of "}
+                    <span className="font-medium text-muted-foreground">
+                      {total}
+                    </span>
+                  </p>
 
-                    {total} total
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1 text-xs"
-                      disabled={
-                        currentPage <=
-                        1
-                      }
-                      onClick={() =>
-                        setPage(
-                          Math.max(
-                            1,
-                            currentPage -
-                              1,
-                          ),
-                        )
-                      }
-                    >
-                      <ChevronLeft className="size-3.5" />
-
-                      Previous
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1 text-xs"
-                      disabled={
-                        currentPage >=
-                        lastPage
-                      }
-                      onClick={() =>
-                        setPage(
-                          Math.min(
-                            lastPage,
-                            currentPage +
-                              1,
-                          ),
-                        )
-                      }
-                    >
-                      Next
-
-                      <ChevronRight className="size-3.5" />
-                    </Button>
-                  </div>
+                  <Pagination
+                    currentPage={
+                      currentPage
+                    }
+                    totalPages={
+                      lastPage
+                    }
+                    disabled={
+                      isLoading
+                    }
+                    onPageChange={(
+                      nextPage,
+                    ) => {
+                      setPage(
+                        nextPage,
+                      );
+                    }}
+                  />
                 </div>
               )}
           </section>
         </div>
       </div>
 
-      {/* ====================================================================== */}
-      {/* ADD / EDIT MODAL                                                       */}
-      {/* ====================================================================== */}
+      {/* ======================================================================
+          ADD / EDIT MODAL
+      ====================================================================== */}
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]"
+          onMouseDown={(event) => {
+            if (
+              event.target ===
+                event.currentTarget &&
+              !saving
+            ) {
+              closeModal();
+            }
+          }}
+        >
           <div className="flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
-            {/* ---------------------------------------------------------------- */}
-            {/* MODAL HEADER                                                      */}
-            {/* ---------------------------------------------------------------- */}
+
+            {/* ----------------------------------------------------------------
+                MODAL HEADER
+            ---------------------------------------------------------------- */}
 
             <div className="flex items-start justify-between border-b border-border/60 px-5 py-4">
               <div>
@@ -1397,20 +1377,25 @@ const toggleSpecialization = (
 
               <button
                 type="button"
-                onClick={closeModal}
+                onClick={
+                  closeModal
+                }
                 disabled={saving}
                 className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Close modal"
               >
                 <X className="size-4" />
               </button>
             </div>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* MODAL BODY                                                        */}
-            {/* ---------------------------------------------------------------- */}
+            {/* ----------------------------------------------------------------
+                MODAL BODY
+            ---------------------------------------------------------------- */}
 
             <div className="flex-1 overflow-y-auto px-5 py-5">
+
               {/* ERROR */}
+
               {modalError && (
                 <div className="mb-4 rounded-md border border-destructive/25 bg-destructive-soft px-3 py-2.5 text-xs text-destructive">
                   {modalError}
@@ -1418,6 +1403,7 @@ const toggleSpecialization = (
               )}
 
               {/* KEYWORD */}
+
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-foreground">
                   Keyword
@@ -1445,6 +1431,7 @@ const toggleSpecialization = (
               </div>
 
               {/* ACTIVE */}
+
               <div className="mt-5 rounded-lg border border-border/60 bg-muted/20 p-3">
                 <label className="flex cursor-pointer items-center gap-3">
                   <input
@@ -1481,8 +1468,9 @@ const toggleSpecialization = (
               </div>
 
               {/* SPECIALIZATIONS */}
+
               <div className="mt-5">
-                <div className="mb-2 flex items-center justify-between">
+                <div className="mb-2 flex items-center justify-between gap-3">
                   <div>
                     <label className="text-xs font-medium text-foreground">
                       Qualification /
@@ -1500,7 +1488,7 @@ const toggleSpecialization = (
                   {form
                     .qualification_specialization_ids
                     .length > 0 && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                       {
                         form
                           .qualification_specialization_ids
@@ -1512,8 +1500,9 @@ const toggleSpecialization = (
                 </div>
 
                 <div className="max-h-[280px] overflow-y-auto rounded-lg border border-border/60">
+
                   {optionsLoading ? (
-                    <div className="flex items-center justify-center px-4 py-8">
+                    <div className="flex items-center justify-center px-4 py-10">
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <RefreshCw className="size-4 animate-spin" />
 
@@ -1521,66 +1510,86 @@ const toggleSpecialization = (
                         specializations...
                       </div>
                     </div>
-                  ) : options.length === 0 ? (
-                    <div className="px-4 py-8 text-center text-xs text-muted-foreground">
+                  ) : options.length ===
+                    0 ? (
+                    <div className="px-4 py-10 text-center text-xs text-muted-foreground">
                       No specialization
                       options found.
                     </div>
                   ) : (
                     <div className="divide-y divide-border/60">
-                      {options.map((option) => {
-  const selected =
-    form.qualification_specialization_ids.includes(
-      Number(option.id),
-    );
+                      {options.map(
+                        (option) => {
+                          const optionId =
+                            Number(
+                              option.id,
+                            );
 
-  return (
-    <label
-      key={option.id}
-      className="flex cursor-pointer items-center gap-3 px-3 py-2.5 transition hover:bg-muted/40"
-    >
-      <input
-        type="checkbox"
-        checked={selected}
-        onChange={() =>
-          toggleSpecialization(
-            Number(option.id),
-          )
-        }
-        disabled={saving}
-        className="size-4 rounded border-border"
-      />
+                          const selected =
+                            form.qualification_specialization_ids.includes(
+                              optionId,
+                            );
 
-      <span
-        className={`text-xs ${
-          selected
-            ? "font-medium text-foreground"
-            : "text-muted-foreground"
-        }`}
-      >
-        {getSpecializationName(
-          option,
-        )}
-      </span>
-    </label>
-  );
-})}
+                          return (
+                            <label
+                              key={
+                                option.id
+                              }
+                              className={`flex cursor-pointer items-center gap-3 px-3 py-2.5 transition ${
+                                selected
+                                  ? "bg-muted/50"
+                                  : "hover:bg-muted/30"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={
+                                  selected
+                                }
+                                onChange={() =>
+                                  toggleSpecialization(
+                                    optionId,
+                                  )
+                                }
+                                disabled={
+                                  saving
+                                }
+                                className="size-4 rounded border-border"
+                              />
+
+                              <span
+                                className={`text-xs ${
+                                  selected
+                                    ? "font-medium text-foreground"
+                                    : "text-muted-foreground"
+                                }`}
+                              >
+                                {getSpecializationName(
+                                  option,
+                                )}
+                              </span>
+                            </label>
+                          );
+                        },
+                      )}
                     </div>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* ---------------------------------------------------------------- */}
-            {/* MODAL FOOTER                                                      */}
-            {/* ---------------------------------------------------------------- */}
+            {/* ----------------------------------------------------------------
+                MODAL FOOTER
+            ---------------------------------------------------------------- */}
 
             <div className="flex items-center justify-end gap-2 border-t border-border/60 px-5 py-3">
               <Button
                 type="button"
                 variant="outline"
                 className="h-9 text-xs"
-                onClick={closeModal}
+                onClick={
+                  closeModal
+                }
                 disabled={saving}
               >
                 Cancel
@@ -1588,8 +1597,10 @@ const toggleSpecialization = (
 
               <Button
                 type="button"
-                className="h-9 min-w-[100px] text-xs"
-                onClick={handleSave}
+                className="h-9 min-w-[110px] text-xs font-semibold"
+                onClick={
+                  handleSave
+                }
                 disabled={
                   saving ||
                   optionsLoading
@@ -1598,7 +1609,6 @@ const toggleSpecialization = (
                 {saving ? (
                   <>
                     <RefreshCw className="mr-1.5 size-3.5 animate-spin" />
-
                     Saving...
                   </>
                 ) : editingId !==
@@ -1612,6 +1622,118 @@ const toggleSpecialization = (
           </div>
         </div>
       )}
+
+      {/* ======================================================================
+    DELETE CONFIRMATION MODAL
+====================================================================== */}
+
+{deleteTarget && (
+  <div
+    className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]"
+    onMouseDown={(event) => {
+      if (
+        event.target === event.currentTarget &&
+        deletingId === null
+      ) {
+        closeDeleteModal();
+      }
+    }}
+  >
+    <div className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+      {/* ------------------------------------------------------------------
+          HEADER
+      ------------------------------------------------------------------ */}
+
+      <div className="flex items-start justify-between border-b border-border/60 px-5 py-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+            <Trash2 className="size-5 text-destructive" />
+          </div>
+
+          <div>
+            <h2 className="text-base font-semibold text-foreground">
+              Delete Keyword?
+            </h2>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              This action cannot be undone.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={closeDeleteModal}
+          disabled={deletingId !== null}
+          className="cursor-pointer rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="Close delete confirmation"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+
+      {/* ------------------------------------------------------------------
+          BODY
+      ------------------------------------------------------------------ */}
+
+      <div className="px-5 py-5">
+        <p className="text-sm leading-6 text-muted-foreground">
+          Are you sure you want to delete{" "}
+          <span className="font-semibold text-foreground">
+            "{deleteTarget.keyword}"
+          </span>
+          ?
+        </p>
+
+        <p className="mt-2 text-xs text-muted-foreground">
+          The keyword and its search configuration will
+          be permanently removed.
+        </p>
+
+        {deleteError && (
+          <div className="mt-4 rounded-md border border-destructive/25 bg-destructive-soft px-3 py-2.5 text-xs text-destructive">
+            {deleteError}
+          </div>
+        )}
+      </div>
+
+      {/* ------------------------------------------------------------------
+          FOOTER
+      ------------------------------------------------------------------ */}
+
+      <div className="flex items-center justify-end gap-2 border-t border-border/60 px-5 py-3">
+        <Button
+          type="button"
+          variant="outline"
+          className="h-9 text-xs"
+          onClick={closeDeleteModal}
+          disabled={deletingId !== null}
+        >
+          Cancel
+        </Button>
+
+        <Button
+          type="button"
+          className="h-9 min-w-[120px] bg-destructive text-xs font-semibold text-destructive-foreground hover:bg-destructive/90"
+          onClick={handleDelete}
+          disabled={deletingId !== null}
+        >
+          {deletingId !== null ? (
+            <>
+              <RefreshCw className="mr-1.5 size-3.5 animate-spin" />
+              Deleting...
+            </>
+          ) : (
+            <>
+              <Trash2 className="mr-1.5 size-3.5" />
+              Delete Keyword
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
     </>
   );
 }

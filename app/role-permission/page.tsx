@@ -213,7 +213,7 @@ export default function RolePermissionsPage() {
         {/* ---------------------------------------------------------------- */}
 
         {(error || save.error) && (
-          <div className="rounded-lg border border-destructive/25 bg-destructive-soft px-4 py-3">
+          <div className="rounded-lg border border-destructive/25 bg-destructive-soft px-4 py-3 mt-4">
             <p className="text-xs font-semibold text-destructive">
               Unable to update permissions
             </p>

@@ -386,11 +386,6 @@ function NotificationsPageContent() {
     totalNotifications / limit,
   );
 
-  const startRecord =
-    totalNotifications === 0
-      ? 0
-      : (currentPage - 1) * limit + 1;
-
   const endRecord = Math.min(
     currentPage * limit,
     totalNotifications,

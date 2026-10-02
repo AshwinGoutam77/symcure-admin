@@ -72,11 +72,6 @@ const navGroups: NavGroup[] = [
   href: "/app-search-keywords",
   icon: Search,
 },
-{
-  label: "Patient Search Logs",
-  href: "/patient-search-logs",
-  icon: FileSearch,
-},
     ],
   },
   {
@@ -84,7 +79,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "Finance", href: "/finance", icon: appIcons.finance, permissionKey: "earnings"},
       { label: "Audit Log", href: "/audit-log", icon: appIcons.audit, permissionKey: "activity_logs" },
-      { label: "Notif. Log", href: "/notifications", icon: appIcons.notifications, permissionKey: "notifications" },
+      // { label: "Notif. Log", href: "/notifications", icon: appIcons.notifications, permissionKey: "notifications" },
     ],
   },
   {

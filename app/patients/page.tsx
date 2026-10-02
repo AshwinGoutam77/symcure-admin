@@ -100,7 +100,7 @@ export default function PatientsPage() {
       }
     };
   }, []);
-  
+
 
   /* ==============================================================
      API
@@ -217,8 +217,8 @@ export default function PatientsPage() {
     (row) =>
       String(
         row.effective_status ??
-          row.status ??
-          "",
+        row.status ??
+        "",
       ).toLowerCase() === "active",
   ).length;
 
@@ -226,23 +226,23 @@ export default function PatientsPage() {
     (row) =>
       String(
         row.effective_status ??
-          row.status ??
-          "",
+        row.status ??
+        "",
       ).toLowerCase() === "suspended",
   ).length;
 
   const total = Number(meta?.total ?? rows.length);
-const currentPage = Number(meta?.current_page ?? page);
-const lastPage = Number(meta?.last_page ?? 1);
-const perPage = Number(meta?.per_page ?? 20);
+  const currentPage = Number(meta?.current_page ?? page);
+  const lastPage = Number(meta?.last_page ?? 1);
+  const perPage = Number(meta?.per_page ?? 20);
 
-const startRecord =
-  total === 0 ? 0 : (currentPage - 1) * perPage + 1;
+  const startRecord =
+    total === 0 ? 0 : (currentPage - 1) * perPage + 1;
 
-const endRecord =
-  total === 0
-    ? 0
-    : Math.min(startRecord + rows.length - 1, total);
+  const endRecord =
+    total === 0
+      ? 0
+      : Math.min(startRecord + rows.length - 1, total);
 
   /* ==============================================================
      RENDER
@@ -433,19 +433,18 @@ const endRecord =
                               {/* APP / WEB TAG */}
 
                               <span
-                                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                  row?.is_app_account === true ||
+                                className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${row?.is_app_account === true ||
+                                    String(
+                                      row?.created_source ?? "",
+                                    ).toLowerCase() === "app"
+                                    ? "bg-primary/10 text-primary"
+                                    : "bg-muted text-muted-foreground"
+                                  }`}
+                              >
+                                {row?.is_app_account === true ||
                                   String(
                                     row?.created_source ?? "",
                                   ).toLowerCase() === "app"
-                                    ? "bg-primary/10 text-primary"
-                                    : "bg-muted text-muted-foreground"
-                                }`}
-                              >
-                                {row?.is_app_account === true ||
-                                String(
-                                  row?.created_source ?? "",
-                                ).toLowerCase() === "app"
                                   ? "App"
                                   : "Web"}
                               </span>
@@ -454,10 +453,10 @@ const endRecord =
 
                             <p className="max-w-[180px] truncate text-xs font-normal text-muted-foreground/80">
                               {row?.guardian_name &&
-                              row?.guardian_type
+                                row?.guardian_type
                                 ? row.guardian_type +
-                                  " " +
-                                  row.guardian_name
+                                " " +
+                                row.guardian_name
                                 : ""}
                             </p>
 
@@ -472,6 +471,22 @@ const endRecord =
                       );
                     },
                   },
+
+                  {
+                  header: "Registration Date",
+                  key: "created_at",
+                  render: (value) => (
+                    <span className="text-xs text-muted-foreground">
+                      {value
+                        ? new Date(value).toLocaleDateString("en-IN", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "—"}
+                    </span>
+                  ),
+                },
 
                   {
                     header: "DOB / Gender",
@@ -504,17 +519,6 @@ const endRecord =
 
                     render: (value) => (
                       <span className="text-xs text-muted-foreground">
-                        {value ?? "—"}
-                      </span>
-                    ),
-                  },
-
-                  {
-                    header: "Email",
-                    key: "email",
-
-                    render: (value) => (
-                      <span className="block max-w-[190px] truncate text-xs text-muted-foreground">
                         {value ?? "—"}
                       </span>
                     ),
@@ -563,8 +567,8 @@ const endRecord =
                     render: (_, row) => {
                       const statusValue = String(
                         row?.effective_status ??
-                          row?.status ??
-                          "",
+                        row?.status ??
+                        "",
                       ).toLowerCase();
 
                       return (
@@ -573,7 +577,7 @@ const endRecord =
                             statusValue === "active"
                               ? "active"
                               : statusValue ===
-                                    "suspended" ||
+                                "suspended" ||
                                 statusValue === "deleted"
                                 ? "failed"
                                 : "pending"
@@ -581,12 +585,12 @@ const endRecord =
                         >
                           {statusValue
                             ? statusValue
-                                .replace(/_/g, " ")
-                                .replace(
-                                  /\b\w/g,
-                                  (char: string) =>
-                                    char.toUpperCase(),
-                                )
+                              .replace(/_/g, " ")
+                              .replace(
+                                /\b\w/g,
+                                (char: string) =>
+                                  char.toUpperCase(),
+                              )
                             : "—"}
                         </StatusBadge>
                       );
@@ -655,43 +659,43 @@ const endRecord =
 
             </div>
           )}
-{/* ======================================================
+          {/* ======================================================
     PAGINATION
 ======================================================= */}
 
-{!isLoading && rows.length > 0 && (
-  <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-    {/* COUNT */}
-    <p className="text-xs text-muted-foreground/80">
-      Showing{" "}
-      <span className="font-medium text-muted-foreground">
-        {startRecord}
-      </span>
+          {!isLoading && rows.length > 0 && (
+            <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+              {/* COUNT */}
+              <p className="text-xs text-muted-foreground/80">
+                Showing{" "}
+                <span className="font-medium text-muted-foreground">
+                  {startRecord}
+                </span>
 
-      {" – "}
+                {" – "}
 
-      <span className="font-medium text-muted-foreground">
-        {endRecord}
-      </span>
+                <span className="font-medium text-muted-foreground">
+                  {endRecord}
+                </span>
 
-      {" of "}
+                {" of "}
 
-      <span className="font-medium text-muted-foreground">
-        {total}
-      </span>
-    </p>
+                <span className="font-medium text-muted-foreground">
+                  {total}
+                </span>
+              </p>
 
-    {/* PAGINATION */}
-    <Pagination
-      currentPage={currentPage}
-      totalPages={lastPage}
-      disabled={isLoading}
-      onPageChange={(nextPage) => {
-        setPage(nextPage);
-      }}
-    />
-  </div>
-)}
+              {/* PAGINATION */}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={lastPage}
+                disabled={isLoading}
+                onPageChange={(nextPage) => {
+                  setPage(nextPage);
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

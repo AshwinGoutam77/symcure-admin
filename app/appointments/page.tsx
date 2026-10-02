@@ -523,8 +523,8 @@ export default function AppointmentsPage() {
                     return (
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${online
-                            ? "bg-chart-4/10 text-chart-4"
-                            : "bg-warning-soft text-warning"
+                          ? "bg-chart-4/10 text-chart-4"
+                          : "bg-warning-soft text-warning"
                           }`}
                       >
                         <span
@@ -537,116 +537,115 @@ export default function AppointmentsPage() {
                   },
                 },
 
-               {
-  header: "Status",
-  key: "status",
-  render: (_, row) => {
-    const currentStatus = String(
-      row?.status ?? "",
-    ).toLowerCase();
+                {
+                  header: "Status",
+                  key: "status",
+                  render: (_, row) => {
+                    const currentStatus = String(
+                      row?.status ?? "",
+                    ).toLowerCase();
 
-    const statusStyles: Record<
-      string,
-      string
-    > = {
-      scheduled:
-        "bg-blue-100 text-blue-700 ring-1 ring-blue-200",
+                    const statusStyles: Record<
+                      string,
+                      string
+                    > = {
+                      scheduled:
+                        "bg-blue-100 text-blue-700 ring-1 ring-blue-200",
 
-      in_progress:
-        "bg-orange-100 text-orange-700 ring-1 ring-orange-200",
+                      in_progress:
+                        "bg-orange-100 text-orange-700 ring-1 ring-orange-200",
 
-      completed:
-        "bg-green-100 text-green-700 ring-1 ring-green-200",
+                      completed:
+                        "bg-green-100 text-green-700 ring-1 ring-green-200",
 
-      cancelled:
-        "bg-red-100 text-red-700 ring-1 ring-red-200",
+                      cancelled:
+                        "bg-red-100 text-red-700 ring-1 ring-red-200",
 
-      no_show:
-        "bg-purple-100 text-purple-700 ring-1 ring-purple-200",
+                      no_show:
+                        "bg-purple-100 text-purple-700 ring-1 ring-purple-200",
 
-      unresolved:
-        "bg-yellow-100 text-yellow-700 ring-1 ring-yellow-200",
-    };
+                      unresolved:
+                        "bg-yellow-100 text-yellow-700 ring-1 ring-yellow-200",
+                    };
 
-    const dotStyles: Record<
-      string,
-      string
-    > = {
-      scheduled: "bg-blue-500",
-      in_progress: "bg-orange-500",
-      completed: "bg-green-500",
-      cancelled: "bg-red-500",
-      no_show: "bg-purple-500",
-      unresolved: "bg-yellow-500",
-    };
+                    const dotStyles: Record<
+                      string,
+                      string
+                    > = {
+                      scheduled: "bg-blue-500",
+                      in_progress: "bg-orange-500",
+                      completed: "bg-green-500",
+                      cancelled: "bg-red-500",
+                      no_show: "bg-purple-500",
+                      unresolved: "bg-yellow-500",
+                    };
 
-    const badgeClass =
-      statusStyles[currentStatus] ??
-      "bg-muted text-muted-foreground";
+                    const badgeClass =
+                      statusStyles[currentStatus] ??
+                      "bg-muted text-muted-foreground";
 
-    const dotClass =
-      dotStyles[currentStatus] ??
-      "bg-muted-foreground";
+                    const dotClass =
+                      dotStyles[currentStatus] ??
+                      "bg-muted-foreground";
 
-    return (
-      <span
-        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${badgeClass}`}
-      >
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${dotClass}`}
-        />
+                    return (
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${badgeClass}`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${dotClass}`}
+                        />
 
-        {formatStatus(currentStatus)}
-      </span>
-    );
-  },
-},
-            {
-  header: "Amount",
-  key: "amount",
-  render: (_, row) => {
-    const paymentStatus = String(
-      row?.payment_status ?? "",
-    ).toLowerCase();
+                        {formatStatus(currentStatus)}
+                      </span>
+                    );
+                  },
+                },
+                {
+                  header: "Amount",
+                  key: "amount",
+                  render: (_, row) => {
+                    const paymentStatus = String(
+                      row?.payment_status ?? "",
+                    ).toLowerCase();
 
-    const paymentTextStyles: Record<
-      string,
-      string
-    > = {
-      paid: "text-green-600",
-      unpaid: "text-red-600",
-      pending: "text-yellow-600",
-    };
+                    const paymentTextStyles: Record<
+                      string,
+                      string
+                    > = {
+                      paid: "text-green-600",
+                      unpaid: "text-red-600",
+                      pending: "text-yellow-600",
+                    };
 
-    return (
-      <div>
-        <p className="text-xs font-semibold text-foreground">
-          {formatAmount(
-            row?.amount ??
-              row?.consultation_fee ??
-              row?.total_amount,
-          )}
-        </p>
+                    return (
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">
+                          {formatAmount(
+                            row?.amount ??
+                            row?.consultation_fee ??
+                            row?.total_amount,
+                          )}
+                        </p>
 
-        {paymentStatus && (
-          <p
-            className={`mt-0.5 text-[10px] font-medium ${
-              paymentTextStyles[
-                paymentStatus
-              ] ?? "text-muted-foreground"
-            }`}
-          >
-            {paymentStatus
-              .replace(/_/g, " ")
-              .replace(/\b\w/g, (char) =>
-                char.toUpperCase(),
-              )}
-          </p>
-        )}
-      </div>
-    );
-  },
-},
+                        {paymentStatus && (
+                          <p
+                            className={`mt-0.5 text-[10px] font-medium ${paymentTextStyles[
+                              paymentStatus
+                              ] ?? "text-muted-foreground"
+                              }`}
+                          >
+                            {paymentStatus
+                              .replace(/_/g, " ")
+                              .replace(/\b\w/g, (char) =>
+                                char.toUpperCase(),
+                              )}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  },
+                },
 
                 {
                   header: "",
@@ -677,41 +676,41 @@ export default function AppointmentsPage() {
             </div>
           )}
 
-      {/* PAGINATION */}
+          {/* PAGINATION */}
 
-{!isLoading && rows.length > 0 && (
-  <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-    {/* COUNT */}
-    <p className="text-xs text-muted-foreground/80">
-      Showing{" "}
-      <span className="font-medium text-muted-foreground">
-        {startRecord}
-      </span>
+          {!isLoading && rows.length > 0 && (
+            <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+              {/* COUNT */}
+              <p className="text-xs text-muted-foreground/80">
+                Showing{" "}
+                <span className="font-medium text-muted-foreground">
+                  {startRecord}
+                </span>
 
-      {" – "}
+                {" – "}
 
-      <span className="font-medium text-muted-foreground">
-        {endRecord}
-      </span>
+                <span className="font-medium text-muted-foreground">
+                  {endRecord}
+                </span>
 
-      {" of "}
+                {" of "}
 
-      <span className="font-medium text-muted-foreground">
-        {total}
-      </span>
-    </p>
+                <span className="font-medium text-muted-foreground">
+                  {total}
+                </span>
+              </p>
 
-    {/* PAGINATION */}
-    <Pagination
-      currentPage={currentPage}
-      totalPages={lastPage}
-      disabled={isLoading}
-      onPageChange={(nextPage) => {
-        setPage(nextPage);
-      }}
-    />
-  </div>
-)}
+              {/* PAGINATION */}
+              <Pagination
+                currentPage={currentPage}
+                totalPages={lastPage}
+                disabled={isLoading}
+                onPageChange={(nextPage) => {
+                  setPage(nextPage);
+                }}
+              />
+            </div>
+          )}
 
         </section>
 
