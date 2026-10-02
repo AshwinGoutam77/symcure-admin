@@ -891,7 +891,7 @@ export default function AppSearchKeywordsPage() {
             row as KeywordRow;
 
           const items =
-            keywordRow.qualification_specializations ??
+            keywordRow.specializations ??
             [];
 
           if (!items.length) {

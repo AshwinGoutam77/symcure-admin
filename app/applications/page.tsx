@@ -512,7 +512,7 @@ export default function ApplicationsPage() {
                     header: "Mobile",
                     key: "mobile",
                     render: (value) => (
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {value ?? "—"}
                       </span>
                     ),
@@ -525,7 +525,7 @@ export default function ApplicationsPage() {
 
                       return (
                         <div className="min-w-[100px]">
-                          <p className="text-[12px] font-medium text-slate-700">
+                          <p className="text-xs font-medium text-slate-700">
                             {formatDate(submittedAt)}
                           </p>
                           {formatTime(submittedAt) && (
