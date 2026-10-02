@@ -49,17 +49,13 @@ type KeywordSpecialization = {
 };
 
 type KeywordRow = {
-  [x: string]: never[];
   id: number;
   keyword: string;
   is_active: boolean;
-
   specialization_count: number;
   doctor_count: number;
-
-  qualification_specialization_ids?: number[];
-  qualification_specializations?: KeywordSpecialization[];
-
+  qualification_specialization_ids: number[];
+  specializations?: KeywordSpecialization[];
   created_at?: string;
   updated_at?: string;
 };
