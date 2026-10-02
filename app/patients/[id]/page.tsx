@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { formatDate, formatDateTime, formatLabel, getInitials } from "@/lib/formatters";
 
 type Patient = {
+  [x: string]: unknown;
   id?: number;
   account_code?: string;
   full_name?: string;
@@ -523,6 +524,12 @@ export default function PatientDetailPage() {
                 label="Registered"
                 value={formatDateTime(patient.created_at)}
               />
+
+                 {/*  {value?.created_by_doctor_name && <span className="block text-[10px] text-muted-foreground">Register By: {value?.created_by_doctor_name}</span>} */}
+                <InfoItem
+                  label="Registered By"
+                  value={formatDate(patient?.created_by_doctor_name)}
+                />
 
               <InfoItem
                 label="Parent Account"

@@ -18,7 +18,7 @@ interface PageHeaderProps {
 /** Standard page title block: breadcrumbs -> title -> description, actions on the right. */
 export function PageHeader({ title, description, breadcrumbs, actions, className }: PageHeaderProps) {
   return (
-    <header className={cn("mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between", className)}>
+    <header className={cn("mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", className)}>
       <div className="min-w-0">
         {breadcrumbs && breadcrumbs.length > 0 && (
           <nav aria-label="Breadcrumb" className="mb-2 flex items-center gap-1 text-xs text-muted-foreground">

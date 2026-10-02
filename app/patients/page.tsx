@@ -426,9 +426,9 @@ export default function PatientsPage() {
 
                             <div className="flex items-center gap-2">
 
-                              <p className="max-w-[190px] truncate text-[12px] font-semibold text-foreground">
+                              <Link href={`/patients/${row.id}`} className="max-w-[190px] truncate text-[12px] font-semibold text-foreground">
                                 {name}
-                              </p>
+                              </Link>
 
                               {/* APP / WEB TAG */}
 
@@ -475,16 +475,19 @@ export default function PatientsPage() {
                   {
                   header: "Registration Date",
                   key: "created_at",
-                  render: (value) => (
+                  render: (_, value) => (
+                  <>
                     <span className="text-xs text-muted-foreground">
                       {value
-                        ? new Date(value).toLocaleDateString("en-IN", {
+                        ? new Date(value?.created_at).toLocaleDateString("en-IN", {
                             day: "2-digit",
                             month: "short",
                             year: "numeric",
                           })
                         : "—"}
                     </span>
+                   {value?.created_by_doctor_name && <span className="block text-[10px] text-muted-foreground">Register By: {value?.created_by_doctor_name}</span>}
+                  </>
                   ),
                 },
 

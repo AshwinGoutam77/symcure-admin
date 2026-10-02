@@ -112,11 +112,7 @@ export default function DashboardPage() {
         description="Platform overview and activity summary."
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching} className="gap-2">
-              <RefreshCw className={`size-4 ${isFetching ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-            <Button asChild size="sm" className="gap-2">
+            <Button asChild variant="primary" className="gap-2">
               <Link href="/applications">
                 <FileCheck2 className="size-4" />
                 Review applications

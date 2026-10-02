@@ -57,8 +57,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="size-5" />
           </button>
-          <Link href="/dashboard" className="flex items-center rounded-md bg-sidebar px-2.5 py-1.5">
-            <Image src="/symcure-logo-white.png" alt="Symcure" width={96} height={34} className="h-auto w-[88px] object-contain" />
+          <Link href="/dashboard" className="flex items-center rounded-md">
+            <Image src="https://symcure.com/wp-content/uploads/2026/05/Symcure-Logo.png" alt="Symcure" width={100} height={50} className="h-auto w-[113px] object-contain" />
           </Link>
         </div>
 

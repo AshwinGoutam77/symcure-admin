@@ -423,7 +423,7 @@ export default function MasterDataImportPage() {
 
         <Card className="overflow-hidden shadow-sm">
 
-          <CardHeader className="border-b border-border/60 px-5 py-4">
+          <CardHeader className="border-b border-border/60 px-5 py-4 pt-0">
 
             <div className="flex items-start justify-between gap-4">
 
@@ -691,7 +691,7 @@ export default function MasterDataImportPage() {
           {/* Import information */}
           <Card className="shadow-sm">
 
-            <CardHeader className="border-b border-border/60 px-5 py-4">
+            <CardHeader className="border-b border-border/60 px-5 py-4 pt-0">
 
               <CardTitle className="text-sm">
                 Import Information
@@ -772,7 +772,7 @@ export default function MasterDataImportPage() {
 
           <Card className="shadow-sm">
 
-            <CardHeader className="border-b border-border/60 px-5 py-4">
+            <CardHeader className="border-b border-border/60 px-5 py-4 pt-0">
 
               <CardTitle className="text-sm">
                 Data Structure

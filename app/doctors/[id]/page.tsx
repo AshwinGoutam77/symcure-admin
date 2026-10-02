@@ -1384,7 +1384,7 @@ export default function AdminDoctorDetailPage() {
                         ) : null}
                       </label>
                       <Field label="Area / Locality" value={form.area} onChange={(v) => updateField("area", v)} />
-                      <Field label="Pincode" value={form.pincode} onChange={(v) => updateField("pincode", v)} />
+                      <Field label="Pincode *" value={form.pincode} onChange={(v) => updateField("pincode", v)} />
                     </div>
                     <div className="mt-4">
                       <Field label="Address Line" value={form.address_line} onChange={(v) => updateField("address_line", v)} />
@@ -1393,8 +1393,8 @@ export default function AdminDoctorDetailPage() {
 
                   <SectionCard title="Professional Information" description="Registration, specialization, experience and consultation fees.">
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <Field label="Registration Number" value={String(doctor?.medical_registration_number ?? doctor?.registration_number_mask ?? "—")} disabled />
-                      <Field label="Registration Year" value={form.registration_year} onChange={(v) => updateField("registration_year", v)} />
+                      <Field label="Registration Number *" value={String(doctor?.medical_registration_number ?? doctor?.registration_number_mask ?? "—")} disabled />
+                      <Field label="Registration Year *" value={form.registration_year} onChange={(v) => updateField("registration_year", v)} />
                       <Field label="Specialization" value={doctor?.specialization_name ?? doctor?.specialization?.name ?? doctor?.specialty ?? "—"} disabled />
                       <Field label="Experience (Years)" value={form.experience_years} onChange={(v) => updateField("experience_years", v)} type="number" />
                       <Field label="Online Consultation Fee" value={form.online_consultation_fee} onChange={(v) => updateField("online_consultation_fee", v)} type="number" disabled />
