@@ -1193,29 +1193,6 @@ export default function AppSearchKeywordsPage() {
                       Inactive
                     </option>
                   </select>
-
-                  {/* REFRESH */}
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-9 gap-1.5 text-xs"
-                    onClick={() =>
-                      refetch()
-                    }
-                    disabled={isLoading}
-                  >
-                    <RefreshCw
-                      className={
-                        isLoading
-                          ? "size-3.5 animate-spin"
-                          : "size-3.5"
-                      }
-                    />
-
-                    Refresh
-                  </Button>
                 </div>
               </div>
             </div>
@@ -1531,8 +1508,8 @@ export default function AppSearchKeywordsPage() {
                                 option.id
                               }
                               className={`flex cursor-pointer items-center gap-3 px-3 py-2.5 transition ${selected
-                                  ? "bg-muted/50"
-                                  : "hover:bg-muted/30"
+                                ? "bg-muted/50"
+                                : "hover:bg-muted/30"
                                 }`}
                             >
                               <input
@@ -1553,8 +1530,8 @@ export default function AppSearchKeywordsPage() {
 
                               <span
                                 className={`text-xs ${selected
-                                    ? "font-medium text-foreground"
-                                    : "text-muted-foreground"
+                                  ? "font-medium text-foreground"
+                                  : "text-muted-foreground"
                                   }`}
                               >
                                 {getSpecializationName(

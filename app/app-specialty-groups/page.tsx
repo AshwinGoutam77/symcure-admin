@@ -93,6 +93,12 @@ export default function AppSpecialtyGroupsPage() {
   const [deletingId, setDeletingId] =
     useState<string | null>(null);
 
+    const [deleteTarget, setDeleteTarget] =
+  useState<SpecialtyGroup | null>(null);
+
+const [deleteError, setDeleteError] =
+  useState("");
+
   const [statusId, setStatusId] =
     useState<string | null>(null);
 
@@ -534,39 +540,50 @@ export default function AppSpecialtyGroupsPage() {
   // Delete
   // ------------------------------------------------------------
 
-  const handleDelete = async (
-    group: SpecialtyGroup,
-  ) => {
-    const confirmed =
-      window.confirm(
-        `Are you sure you want to permanently delete "${group.title}"? This will also remove its specialization mappings and image.`,
-      );
+const openDeleteModal = (
+  group: SpecialtyGroup,
+) => {
+  setDeleteTarget(group);
+  setDeleteError("");
+};
 
-    if (!confirmed) return;
+const closeDeleteModal = () => {
+  if (deletingId) return;
 
-    try {
-      setDeletingId(group.id);
-      setError("");
+  setDeleteTarget(null);
+  setDeleteError("");
+};
 
-      await deleteAppSpecialtyGroup(
-        group.id,
-      );
+const handleDelete = async () => {
+  if (!deleteTarget) return;
 
-      await loadGroups();
-    } catch (err: any) {
-      console.error(
-        "Failed to delete specialty group:",
-        err,
-      );
+  try {
+    setDeletingId(deleteTarget.id);
+    setDeleteError("");
+    setError("");
 
-      setError(
-        err?.message ||
-          "Failed to delete specialty group.",
-      );
-    } finally {
-      setDeletingId(null);
-    }
-  };
+    await deleteAppSpecialtyGroup(
+      deleteTarget.id,
+    );
+
+    setDeleteTarget(null);
+    setDeleteError("");
+
+    await loadGroups();
+  } catch (err: any) {
+    console.error(
+      "Failed to delete specialty group:",
+      err,
+    );
+
+    setDeleteError(
+      err?.message ||
+        "Failed to delete specialty group.",
+    );
+  } finally {
+    setDeletingId(null);
+  }
+};
 
   // ------------------------------------------------------------
   // Remove Image
@@ -865,7 +882,11 @@ export default function AppSpecialtyGroupsPage() {
                       <button
                         type="button"
                         disabled={deletingId === row.id}
-                        onClick={() => handleDelete(row as SpecialtyGroup)}
+                        onClick={() =>
+  openDeleteModal(
+    row as SpecialtyGroup,
+  )
+}
                         className="cursor-pointer flex h-8 items-center rounded-md px-2.5 text-xs font-medium text-destructive transition hover:bg-destructive-soft disabled:opacity-50"
                       >
                         {deletingId === row.id ? "Deleting..." : "Delete"}
@@ -1466,6 +1487,123 @@ export default function AppSpecialtyGroupsPage() {
           </div>
         </div>
       )}
+
+      {deleteTarget && (
+  <div
+    className="fixed inset-0 z-[110] flex items-center justify-center bg-foreground/50 p-4 backdrop-blur-[2px]"
+    onMouseDown={(event) => {
+      if (
+        event.target === event.currentTarget &&
+        !deletingId
+      ) {
+        closeDeleteModal();
+      }
+    }}
+  >
+    <div className="w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+      {/* Header */}
+      <div className="flex items-start justify-between border-b border-border px-5 py-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              className="h-5 w-5 text-destructive"
+            >
+              <path d="M3 6h18" />
+              <path d="M8 6V4h8v2" />
+              <path d="m19 6-1 14H6L5 6" />
+              <path d="M10 11v5" />
+              <path d="M14 11v5" />
+            </svg>
+          </div>
+
+          <div>
+            <h2 className="text-base font-semibold text-foreground">
+              Delete Specialty Group?
+            </h2>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              This action cannot be undone.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={closeDeleteModal}
+          disabled={!!deletingId}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            className="h-4 w-4"
+          >
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="px-5 py-5">
+        <p className="text-sm leading-6 text-muted-foreground">
+          Are you sure you want to permanently delete{" "}
+          <span className="font-semibold text-foreground">
+            "{deleteTarget.title}"
+          </span>
+          ?
+        </p>
+
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">
+          This will also remove its specialization
+          mappings and image.
+        </p>
+
+        {deleteError && (
+          <div className="mt-4 rounded-lg border border-destructive/25 bg-destructive-soft px-3 py-2.5 text-xs text-destructive">
+            {deleteError}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-3">
+        <Button
+                type="button"
+                variant="outline"
+                className="h-9 text-xs"
+          onClick={closeDeleteModal}
+          disabled={!!deletingId}
+        >
+          Cancel
+        </Button>
+
+        <Button
+        type="button"
+                className="h-9 min-w-[120px] bg-destructive text-xs font-semibold text-destructive-foreground hover:bg-destructive/90"
+          disabled={!!deletingId}
+           >
+          {deletingId ? (
+            <>
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-destructive-foreground/30 border-t-destructive-foreground" />
+              Deleting...
+            </>
+          ) : (
+            "Delete Group"
+          )}
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

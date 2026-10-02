@@ -202,7 +202,7 @@ function MasterPreviewPageContent() {
     1,
     Number(
       meta?.last_page ??
-        Math.ceil(total / perPage),
+      Math.ceil(total / perPage),
     ),
   );
 
@@ -215,9 +215,9 @@ function MasterPreviewPageContent() {
     total === 0
       ? 0
       : Math.min(
-          startRecord + rows.length - 1,
-          total,
-        );
+        startRecord + rows.length - 1,
+        total,
+      );
 
   /**
    * Dynamic table columns
@@ -321,7 +321,7 @@ function MasterPreviewPageContent() {
   /**
    * Add record
    */
-  async function handleAdd() {
+  async function handleAdd(title: any) {
     const trimmedName = name.trim();
 
     if (!trimmedName) {
@@ -333,7 +333,9 @@ function MasterPreviewPageContent() {
 
     try {
       await createMutation.mutateAsync({
-        name: trimmedName,
+        ...(title === "Medicines"
+          ? { generic_name: trimmedName }
+          : { name: trimmedName }),
         is_active: true,
       });
 
@@ -348,7 +350,7 @@ function MasterPreviewPageContent() {
     } catch (err: any) {
       setAddError(
         err?.message ||
-          "Unable to create this record.",
+        "Unable to create this record.",
       );
     }
   }
@@ -559,39 +561,39 @@ function MasterPreviewPageContent() {
           )}
 
           {/* TABLE */}
-         <div className="p-5">
-           <DataTable
-            columns={[
-              ...columns,
-              {
-                header: "ACTION",
-                key: "action",
-                render: (
-                  _: unknown,
-                  row: any,
-                ) => (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      void handleToggle(row)
-                    }
-                  >
-                    {Boolean(row.is_active)
-                      ? "Deactivate"
-                      : "Activate"}
-                  </Button>
-                ),
-              },
-            ]}
-            data={
-              isLoading
-                ? []
-                : rows
-            }
-          />
-         </div>
+          <div className="p-5">
+            <DataTable
+              columns={[
+                ...columns,
+                {
+                  header: "ACTION",
+                  key: "action",
+                  render: (
+                    _: unknown,
+                    row: any,
+                  ) => (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        void handleToggle(row)
+                      }
+                    >
+                      {Boolean(row.is_active)
+                        ? "Deactivate"
+                        : "Activate"}
+                    </Button>
+                  ),
+                },
+              ]}
+              data={
+                isLoading
+                  ? []
+                  : rows
+              }
+            />
+          </div>
 
           {/* LOADING */}
           {isLoading && (
@@ -706,7 +708,7 @@ function MasterPreviewPageContent() {
                       event.key === "Enter"
                     ) {
                       event.preventDefault();
-                      void handleAdd();
+                      void handleAdd(title);
                     }
                   }}
                 />
@@ -732,7 +734,7 @@ function MasterPreviewPageContent() {
 
               <Button
                 type="button"
-                onClick={() => void handleAdd()}
+                onClick={() => void handleAdd(title)}
                 disabled={
                   createMutation.isPending ||
                   !name.trim()
