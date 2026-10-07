@@ -632,6 +632,17 @@ function DoctorsPageContent() {
                 },
               ]}
               data={isLoading ? [] : rows}
+
+              onRowClick={(row) => {
+                router.push(
+                  `/doctors/${row.id}?returnTo=${encodeURIComponent(
+                    `${pathname}${searchParams.toString()
+                      ? `?${searchParams.toString()}`
+                      : ""
+                    }`,
+                  )}`,
+                );
+              }}
             />
 
           </div>

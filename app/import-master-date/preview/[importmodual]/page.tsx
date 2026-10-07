@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import {
   getMaster,
   createMaster,
+  updateMaster,
   setMasterStatus,
 } from "@/lib/api/admin";
 
@@ -79,6 +80,11 @@ function MasterPreviewPageContent() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [name, setName] = useState("");
   const [addError, setAddError] = useState("");
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingRow, setEditingRow] = useState<any | null>(null);
+  const [editValues, setEditValues] = useState<Record<string, any>>({});
+  const [editError, setEditError] = useState("");
+const [showSuggestions, setShowSuggestions] = useState(false);
 
   const limit = 20;
 
@@ -173,6 +179,21 @@ function MasterPreviewPageContent() {
     unknown
   >((body) => createMaster(resource, body));
 
+  const updateMutation = useAdminMutation<
+  Record<string, unknown>,
+  unknown
+>((body) => {
+  if (!editingRow?.id) {
+    throw new Error("Invalid master record.");
+  }
+
+  return updateMaster(
+    resource,
+    String(editingRow.id),
+    body,
+  );
+});
+
   /**
    * Normalize response
    */
@@ -183,6 +204,51 @@ function MasterPreviewPageContent() {
     : Array.isArray(payload?.data)
       ? payload.data
       : [];
+
+      const addSuggestions = useMemo(() => {
+  const query = name.trim().toLowerCase();
+
+  if (!query) return [];
+
+  const field =
+    moduleKey === "medicines"
+      ? "generic_name"
+      : "name";
+
+  return rows
+    .filter((row) => {
+      const value = String(row?.[field] ?? "").trim();
+
+      return (
+        value &&
+        value.toLowerCase().includes(query)
+      );
+    })
+    .filter((row, index, array) => {
+      const field =
+        moduleKey === "medicines"
+          ? "generic_name"
+          : "name";
+
+      const value = String(
+        row?.[field] ?? "",
+      )
+        .trim()
+        .toLowerCase();
+
+      return (
+        array.findIndex(
+          (item) =>
+            String(
+              item?.[field] ?? "",
+            )
+              .trim()
+              .toLowerCase() === value,
+        ) === index
+      );
+    })
+    .slice(0, 8);
+}, [rows, name, moduleKey]);
 
   const meta = payload?.meta ?? {};
 
@@ -354,6 +420,99 @@ function MasterPreviewPageContent() {
       );
     }
   }
+
+  function openEditModal(row: any) {
+  const values: Record<string, any> = {};
+
+  Object.entries(row ?? {}).forEach(([key, value]) => {
+    if (
+      [
+        "id",
+        "created_at",
+        "updated_at",
+        "deleted_at",
+      ].includes(key)
+    ) {
+      return;
+    }
+
+    values[key] = value;
+  });
+
+  setEditingRow(row);
+  setEditValues(values);
+  setEditError("");
+  setIsEditOpen(true);
+}
+
+function closeEditModal() {
+  if (updateMutation.isPending) return;
+
+  setIsEditOpen(false);
+  setEditingRow(null);
+  setEditValues({});
+  setEditError("");
+}
+
+function updateEditValue(
+  key: string,
+  value: any,
+) {
+  setEditValues((current) => ({
+    ...current,
+    [key]: value,
+  }));
+
+  setEditError("");
+}
+
+async function handleEdit() {
+  if (!editingRow?.id) {
+    setEditError("Invalid master record.");
+    return;
+  }
+
+  const body: Record<string, unknown> = {};
+
+  Object.entries(editValues).forEach(
+    ([key, value]) => {
+      if (
+        [
+          "id",
+          "created_at",
+          "updated_at",
+          "deleted_at",
+        ].includes(key)
+      ) {
+        return;
+      }
+
+      body[key] = value;
+    },
+  );
+
+  /*
+   * The API expects is_active.
+   * Keep status changes handled separately by
+   * the Activate/Deactivate action.
+   */
+  delete body.is_active;
+
+  try {
+    await updateMutation.mutateAsync(body);
+
+    setIsEditOpen(false);
+    setEditingRow(null);
+    setEditValues({});
+
+    await refetch();
+  } catch (err: any) {
+    setEditError(
+      err?.message ||
+        "Unable to update this record.",
+    );
+  }
+}
 
   /**
    * Toggle status
@@ -565,27 +724,40 @@ function MasterPreviewPageContent() {
             <DataTable
               columns={[
                 ...columns,
-                {
-                  header: "ACTION",
-                  key: "action",
-                  render: (
-                    _: unknown,
-                    row: any,
-                  ) => (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        void handleToggle(row)
-                      }
-                    >
-                      {Boolean(row.is_active)
-                        ? "Deactivate"
-                        : "Activate"}
-                    </Button>
-                  ),
-                },
+               {
+  header: "ACTION",
+  key: "action",
+  render: (
+    _: unknown,
+    row: any,
+  ) => (
+    <div className="flex items-center gap-2">
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={() =>
+          openEditModal(row)
+        }
+      >
+        Edit
+      </Button>
+
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        onClick={() =>
+          void handleToggle(row)
+        }
+      >
+        {Boolean(row.is_active)
+          ? "Deactivate"
+          : "Activate"}
+      </Button>
+    </div>
+  ),
+},
               ]}
               data={
                 isLoading
@@ -659,7 +831,7 @@ function MasterPreviewPageContent() {
             }
           }}
         >
-          <div className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-xl">
+          <div className="relative w-full max-w-md overflow-visible rounded-xl border border-border bg-card shadow-xl">
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-border px-5 py-4">
               <div>
@@ -676,7 +848,7 @@ function MasterPreviewPageContent() {
                 type="button"
                 onClick={closeAddModal}
                 disabled={createMutation.isPending}
-                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                className="cursor-pointer rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
                 aria-label="Close"
               >
                 <X className="size-4" />
@@ -684,35 +856,95 @@ function MasterPreviewPageContent() {
             </div>
 
             {/* Modal Body */}
-            <div className="space-y-4 px-5 py-5">
-              <div className="space-y-2">
-                <label
-                  htmlFor="master-name"
-                  className="text-sm font-medium"
-                >
-                  Name
-                </label>
+            <div className="relative space-y-4 overflow-visible px-5 py-5">
+             <div className="relative space-y-2">
+  <label
+    htmlFor="master-name"
+    className="text-sm font-medium"
+  >
+    {moduleKey === "medicines"
+      ? "Generic Name"
+      : "Name"}
+  </label>
 
-                <Input
-                  id="master-name"
-                  autoFocus
-                  value={name}
-                  onChange={(event) => {
-                    setName(event.target.value);
-                    setAddError("");
-                  }}
-                  placeholder={`Enter ${title.toLowerCase()} name`}
-                  disabled={createMutation.isPending}
-                  onKeyDown={(event) => {
-                    if (
-                      event.key === "Enter"
-                    ) {
-                      event.preventDefault();
-                      void handleAdd(title);
-                    }
-                  }}
-                />
-              </div>
+  <Input
+    id="master-name"
+    autoFocus
+    value={name}
+    onChange={(event) => {
+      setName(event.target.value);
+      setAddError("");
+      setShowSuggestions(true);
+    }}
+    onFocus={() => {
+      if (name.trim()) {
+        setShowSuggestions(true);
+      }
+    }}
+    onBlur={() => {
+      // Give the suggestion click time to fire
+      setTimeout(() => {
+        setShowSuggestions(false);
+      }, 150);
+    }}
+    placeholder={
+      moduleKey === "medicines"
+        ? "Enter generic name"
+        : `Enter ${title.toLowerCase()} name`
+    }
+    disabled={createMutation.isPending}
+    onKeyDown={(event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        void handleAdd(title);
+      }
+
+      if (event.key === "Escape") {
+        setShowSuggestions(false);
+      }
+    }}
+  />
+
+  {showSuggestions &&
+    name.trim() &&
+    addSuggestions.length > 0 && (
+      <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+        <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Suggestions
+        </div>
+
+        <div className="max-h-52 overflow-y-auto">
+          {addSuggestions.map((row) => {
+            const field =
+              moduleKey === "medicines"
+                ? "generic_name"
+                : "name";
+
+            const suggestion = String(
+              row?.[field] ?? "",
+            ).trim();
+
+            return (
+              <button
+                key={row.id}
+                type="button"
+                className="cursor-pointer flex w-full items-center px-3 py-2.5 text-left text-sm text-foreground hover:bg-muted"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+
+                  setName(suggestion);
+                  setShowSuggestions(false);
+                  setAddError("");
+                }}
+              >
+                {suggestion}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    )}
+</div>
 
               {addError && (
                 <div className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
@@ -752,6 +984,104 @@ function MasterPreviewPageContent() {
           </div>
         </div>
       )}
+
+      {isEditOpen && editingRow && (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-[2px]"
+    onMouseDown={(event) => {
+      if (
+        event.target === event.currentTarget
+      ) {
+        closeEditModal();
+      }
+    }}
+  >
+    <div className="w-full max-w-lg overflow-hidden rounded-xl border border-border bg-card shadow-xl">
+      {/* Header */}
+      <div className="flex items-start justify-between border-b border-border px-5 py-4">
+        <div>
+          <h2 className="text-base font-semibold">
+            Edit {title}
+          </h2>
+
+          <p className="mt-1 text-xs text-muted-foreground">
+            Update this {title.toLowerCase()} master record.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={closeEditModal}
+          disabled={updateMutation.isPending}
+          className="cursor-pointer rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+          aria-label="Close"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="max-h-[65vh] space-y-4 overflow-y-auto px-5 py-5">
+       <div className="space-y-2">
+  <label className="text-sm font-medium">
+    {moduleKey === "medicines"
+      ? "Name"
+      : "Name"}
+  </label>
+
+  <Input
+    value={
+      moduleKey === "medicines"
+        ? editValues.generic_name ?? ""
+        : editValues.name ?? ""
+    }
+    onChange={(event) =>
+      updateEditValue(
+        moduleKey === "medicines"
+          ? "generic_name"
+          : "name",
+        event.target.value,
+      )
+    }
+    disabled={updateMutation.isPending}
+  />
+</div>
+
+        {editError && (
+          <div className="rounded-md border border-destructive/20 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            {editError}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-end gap-2 border-t border-border px-5 py-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={closeEditModal}
+          disabled={updateMutation.isPending}
+        >
+          Cancel
+        </Button>
+
+        <Button
+          type="button"
+          onClick={() => void handleEdit()}
+          disabled={updateMutation.isPending}
+        >
+          {updateMutation.isPending && (
+            <RefreshCw className="mr-2 size-4 animate-spin" />
+          )}
+
+          {updateMutation.isPending
+            ? "Saving..."
+            : "Save Changes"}
+        </Button>
+      </div>
+    </div>
+  </div>
+)}
     </>
   );
 }

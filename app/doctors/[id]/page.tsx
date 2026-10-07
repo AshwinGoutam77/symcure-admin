@@ -119,6 +119,24 @@ function money(value: any) {
   }).format(n);
 }
 
+function dateInputValue(value: any) {
+  if (!value) return "";
+
+  const raw = String(value).trim();
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+
+  if (match) return match[1];
+
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function dateLabel(value: any) {
   if (!value) return "—";
   const date = new Date(String(value));
@@ -220,7 +238,7 @@ function Pill({ value, children }: { value: any; children?: ReactNode }) {
   }[tone];
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${styles}`}>
+    <span className={`capitalize inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${styles}`}>
       <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
       {children ?? normalizeStatus(value)}
     </span>
@@ -269,7 +287,14 @@ function Field({
   return (
     <label className="block">
       <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
+        {label.endsWith(" *") ? (
+          <>
+            {label.slice(0, -2)}
+            <span className="ml-1 text-destructive">*</span>
+          </>
+        ) : (
+          label
+        )}
       </span>
       <input
         type={type}
@@ -400,6 +425,14 @@ export default function AdminDoctorDetailPage() {
 
   const doctor = doctorResponse?.doctor ?? doctorResponse ?? {};
 
+  const professionals = Array.isArray(doctorResponse?.professionals)
+    ? doctorResponse.professionals
+    : [];
+
+  const qualifications = Array.isArray(doctorResponse?.qualifications)
+    ? doctorResponse.qualifications
+    : [];
+
   const statusOverview =
     doctorResponse?.status_overview ??
     doctor?.status_overview ??
@@ -513,7 +546,7 @@ export default function AdminDoctorDetailPage() {
       last_name: d.last_name ?? d.lastName ?? "",
       mobile: d.mobile ?? "",
       email: d.email ?? "",
-      dob: d.dob ?? "",
+      dob: dateInputValue(d.dob),
       gender: d.gender ?? "",
       clinic_name: d.clinic_name ?? d.clinic?.name ?? "",
       address_line: d.address_line ?? d.address ?? d.clinic?.address ?? "",
@@ -985,284 +1018,283 @@ export default function AdminDoctorDetailPage() {
     },
   ];
 
-const appointmentColumns = [
-  {
-    key: "appointment_code",
-    header: "Appointment",
-    render: (_value: any, row: any) => (
-      <div>
-        <p className="text-xs font-semibold text-foreground">
-          {row.appointment_code ??
-            row.appointment_id ??
-            row.id ??
-            "—"}
-        </p>
-
-        {row.token_number ? (
-          <p className="mt-0.5 text-xs text-muted-foreground/80">
-            Token: {row.token_number}
-          </p>
-        ) : null}
-      </div>
-    ),
-  },
-
-  {
-    key: "patient",
-    header: "Patient",
-    render: (_value: any, row: any) => (
-      <div className="min-w-0">
-        <p className="max-w-[180px] truncate text-xs font-semibold text-foreground">
-          {row.patient?.name ??
-            row.patient?.full_name ??
-            row.patient_name ??
-            "—"}
-        </p>
-
-        {row.patient?.guardian_name &&
-          row.patient?.guardian_type ? (
-          <p className="max-w-[180px] truncate text-xs text-muted-foreground/80">
-            {row.patient.guardian_type}{" "}
-            {row.patient.guardian_name}
-          </p>
-        ) : null}
-
-        {(row.patient?.patient_code ??
-          row.patient?.account_code ??
-          row.patient_code) ? (
-          <p className="mt-0.5 text-xs text-muted-foreground/80">
-            {row.patient?.patient_code ??
-              row.patient?.account_code ??
-              row.patient_code}
-          </p>
-        ) : null}
-      </div>
-    ),
-  },
-
-  {
-    key: "start_at",
-    header: "Date / Time",
-    render: (value: any, row: any) => (
-      <div className="min-w-[125px]">
-        <p className="text-xs font-medium text-foreground/80">
-          {dateLabel(
-            value ??
-              row.date ??
-              row.appointment_date,
-          )}
-        </p>
-
-        <p className="mt-0.5 text-xs text-muted-foreground/80">
-          {timeLabel(
-            row.time ??
-              row.start_time ??
-              value,
-          )}
-        </p>
-      </div>
-    ),
-  },
-
-  {
-    key: "consult_type",
-    header: "Type",
-    render: (value: any, row: any) => {
-      const type = String(
-        value ??
-          row.type ??
-          "",
-      ).toLowerCase();
-
-      const isClinic =
-        type === "offline" ||
-        type === "clinic";
-
-      const label = isClinic
-        ? "Clinic"
-        : type === "online" ||
-            type === "video"
-          ? "Video"
-          : value ??
-            row.type ??
-            "—";
-
-      return (
-        <span
-          className={[
-            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
-            "text-[12px] font-semibold capitalize",
-            isClinic
-              ? "bg-warning-soft text-warning"
-              : "bg-blue-50 text-blue-600",
-          ].join(" ")}
-        >
-          <span
-            className={[
-              "size-1.5 rounded-full",
-              isClinic
-                ? "bg-amber-500"
-                : "bg-blue-500",
-            ].join(" ")}
-          />
-
-          {label}
-        </span>
-      );
-    },
-  },
-
-  {
-    key: "status",
-    header: "Status",
-    render: (value: any) => {
-      const status = String(
-        value ?? "",
-      ).toLowerCase();
-
-      let label = "—";
-
-      if (status === "scheduled") {
-        label = "Scheduled";
-      } else if (status === "completed") {
-        label = "Completed";
-      } else if (status === "cancelled") {
-        label = "Cancelled";
-      } else if (status === "no_show") {
-        label = "No Show";
-      } else if (status === "unresolved") {
-        label = "Unresolved";
-      } else if (value) {
-        label = String(value)
-          .replace(/_/g, " ")
-          .replace(/\b\w/g, (char) =>
-            char.toUpperCase(),
-          );
-      }
-
-      if (status === "scheduled") {
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-[12px] font-semibold text-blue-600">
-            <span className="size-1.5 rounded-full bg-blue-500" />
-            {label}
-          </span>
-        );
-      }
-
-      if (status === "completed") {
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[12px] font-semibold text-emerald-600">
-            <span className="size-1.5 rounded-full bg-emerald-500" />
-            {label}
-          </span>
-        );
-      }
-
-      if (
-        status === "cancelled" ||
-        status === "no_show"
-      ) {
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-[12px] font-semibold text-red-600">
-            <span className="size-1.5 rounded-full bg-red-500" />
-            {label}
-          </span>
-        );
-      }
-
-      if (status === "unresolved") {
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[12px] font-semibold text-amber-600">
-            <span className="size-1.5 rounded-full bg-amber-500" />
-            {label}
-          </span>
-        );
-      }
-
-      return (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[12px] font-semibold text-muted-foreground">
-          <span className="size-1.5 rounded-full bg-current opacity-70" />
-          {label}
-        </span>
-      );
-    },
-  },
-
-  {
-    key: "amount",
-    header: "Amount",
-    render: (value: any, row: any) => {
-      const amount =
-        value ??
-        row.total_amount ??
-        row.amount ??
-        0;
-
-      const paymentStatus = String(
-        row.payment_status ??
-          row.payment?.status ??
-          row.status_payment ??
-          "",
-      ).toLowerCase();
-
-      const isPaid =
-        paymentStatus === "paid" ||
-        paymentStatus === "success" ||
-        paymentStatus === "completed";
-
-      const isPending =
-        paymentStatus === "pending" ||
-        paymentStatus === "unpaid";
-
-      const isNotRequired =
-        paymentStatus ===
-          "not_required" ||
-        paymentStatus ===
-          "not required" ||
-        Number(amount) === 0 &&
-          !isPending &&
-          !isPaid;
-
-      return (
+  const appointmentColumns = [
+    {
+      key: "appointment_code",
+      header: "Appointment",
+      render: (_value: any, row: any) => (
         <div>
           <p className="text-xs font-semibold text-foreground">
-            {money(amount)}
+            {row.appointment_code ??
+              row.appointment_id ??
+              row.id ??
+              "—"}
           </p>
 
-          {isPaid ? (
-            <p className="mt-0.5 text-[12px] font-medium text-emerald-600">
-              Paid
-            </p>
-          ) : isPending ? (
-            <p className="mt-0.5 text-[12px] font-medium text-amber-600">
-              Pending
-            </p>
-          ) : isNotRequired ? (
-            <p className="mt-0.5 text-[12px] font-medium text-muted-foreground">
-              Not Required
+          {row.token_number ? (
+            <p className="mt-0.5 text-xs text-muted-foreground/80">
+              Token: {row.token_number}
             </p>
           ) : null}
         </div>
-      );
+      ),
     },
-  },
 
-  {
-    key: "action",
-    header: "",
-    render: (_value: any, row: any) => (
-      <Link
-        href={`/appointments/${
-          row.id ??
-          row.appointment_id
-        }`}
-        className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground/50 transition hover:bg-muted hover:text-muted-foreground"
-      >
-        <ChevronRight className="size-4" />
-      </Link>
-    ),
-  },
-];
+    {
+      key: "patient",
+      header: "Patient",
+      render: (_value: any, row: any) => (
+        <div className="min-w-0">
+          <p className="max-w-[180px] truncate text-xs font-semibold text-foreground">
+            {row.patient?.name ??
+              row.patient?.full_name ??
+              row.patient_name ??
+              "—"}
+          </p>
+
+          {row.patient?.guardian_name &&
+            row.patient?.guardian_type ? (
+            <p className="max-w-[180px] truncate text-xs text-muted-foreground/80">
+              {row.patient.guardian_type}{" "}
+              {row.patient.guardian_name}
+            </p>
+          ) : null}
+
+          {(row.patient?.patient_code ??
+            row.patient?.account_code ??
+            row.patient_code) ? (
+            <p className="mt-0.5 text-xs text-muted-foreground/80">
+              {row.patient?.patient_code ??
+                row.patient?.account_code ??
+                row.patient_code}
+            </p>
+          ) : null}
+        </div>
+      ),
+    },
+
+    {
+      key: "start_at",
+      header: "Date / Time",
+      render: (value: any, row: any) => (
+        <div className="min-w-[125px]">
+          <p className="text-xs font-medium text-foreground/80">
+            {dateLabel(
+              value ??
+              row.date ??
+              row.appointment_date,
+            )}
+          </p>
+
+          <p className="mt-0.5 text-xs text-muted-foreground/80">
+            {timeLabel(
+              row.time ??
+              row.start_time ??
+              value,
+            )}
+          </p>
+        </div>
+      ),
+    },
+
+    {
+      key: "consult_type",
+      header: "Type",
+      render: (value: any, row: any) => {
+        const type = String(
+          value ??
+          row.type ??
+          "",
+        ).toLowerCase();
+
+        const isClinic =
+          type === "offline" ||
+          type === "clinic";
+
+        const label = isClinic
+          ? "Clinic"
+          : type === "online" ||
+            type === "video"
+            ? "Video"
+            : value ??
+            row.type ??
+            "—";
+
+        return (
+          <span
+            className={[
+              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
+              "text-[12px] font-semibold capitalize",
+              isClinic
+                ? "bg-warning-soft text-warning"
+                : "bg-blue-50 text-blue-600",
+            ].join(" ")}
+          >
+            <span
+              className={[
+                "size-1.5 rounded-full",
+                isClinic
+                  ? "bg-amber-500"
+                  : "bg-blue-500",
+              ].join(" ")}
+            />
+
+            {label}
+          </span>
+        );
+      },
+    },
+
+    {
+      key: "status",
+      header: "Status",
+      render: (value: any) => {
+        const status = String(
+          value ?? "",
+        ).toLowerCase();
+
+        let label = "—";
+
+        if (status === "scheduled") {
+          label = "Scheduled";
+        } else if (status === "completed") {
+          label = "Completed";
+        } else if (status === "cancelled") {
+          label = "Cancelled";
+        } else if (status === "no_show") {
+          label = "No Show";
+        } else if (status === "unresolved") {
+          label = "Unresolved";
+        } else if (value) {
+          label = String(value)
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, (char) =>
+              char.toUpperCase(),
+            );
+        }
+
+        if (status === "scheduled") {
+          return (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-[12px] font-semibold text-blue-600">
+              <span className="size-1.5 rounded-full bg-blue-500" />
+              {label}
+            </span>
+          );
+        }
+
+        if (status === "completed") {
+          return (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[12px] font-semibold text-emerald-600">
+              <span className="size-1.5 rounded-full bg-emerald-500" />
+              {label}
+            </span>
+          );
+        }
+
+        if (
+          status === "cancelled" ||
+          status === "no_show"
+        ) {
+          return (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-[12px] font-semibold text-red-600">
+              <span className="size-1.5 rounded-full bg-red-500" />
+              {label}
+            </span>
+          );
+        }
+
+        if (status === "unresolved") {
+          return (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[12px] font-semibold text-amber-600">
+              <span className="size-1.5 rounded-full bg-amber-500" />
+              {label}
+            </span>
+          );
+        }
+
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[12px] font-semibold text-muted-foreground">
+            <span className="size-1.5 rounded-full bg-current opacity-70" />
+            {label}
+          </span>
+        );
+      },
+    },
+
+    {
+      key: "amount",
+      header: "Amount",
+      render: (value: any, row: any) => {
+        const amount =
+          value ??
+          row.total_amount ??
+          row.amount ??
+          0;
+
+        const paymentStatus = String(
+          row.payment_status ??
+          row.payment?.status ??
+          row.status_payment ??
+          "",
+        ).toLowerCase();
+
+        const isPaid =
+          paymentStatus === "paid" ||
+          paymentStatus === "success" ||
+          paymentStatus === "completed";
+
+        const isPending =
+          paymentStatus === "pending" ||
+          paymentStatus === "unpaid";
+
+        const isNotRequired =
+          paymentStatus ===
+          "not_required" ||
+          paymentStatus ===
+          "not required" ||
+          Number(amount) === 0 &&
+          !isPending &&
+          !isPaid;
+
+        return (
+          <div>
+            <p className="text-xs font-semibold text-foreground">
+              {money(amount)}
+            </p>
+
+            {isPaid ? (
+              <p className="mt-0.5 text-[12px] font-medium text-emerald-600">
+                Paid
+              </p>
+            ) : isPending ? (
+              <p className="mt-0.5 text-[12px] font-medium text-amber-600">
+                Pending
+              </p>
+            ) : isNotRequired ? (
+              <p className="mt-0.5 text-[12px] font-medium text-muted-foreground">
+                Not Required
+              </p>
+            ) : null}
+          </div>
+        );
+      },
+    },
+
+    {
+      key: "action",
+      header: "",
+      render: (_value: any, row: any) => (
+        <Link
+          href={`/appointments/${row.id ??
+            row.appointment_id
+            }`}
+          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground/50 transition hover:bg-muted hover:text-muted-foreground"
+        >
+          <ChevronRight className="size-4" />
+        </Link>
+      ),
+    },
+  ];
 
   return (
     <div className="w-full">
@@ -1273,7 +1305,7 @@ const appointmentColumns = [
             <button
               type="button"
               onClick={handleBack}
-              className="flex items-center gap-2 text-xs font-medium text-muted-foreground/80 hover:text-foreground"
+              className="cursor-pointer flex items-center gap-2 text-xs font-medium text-muted-foreground/80 hover:text-foreground"
             >
               <ArrowLeft className="size-3.5" />
               Doctors
@@ -1530,10 +1562,15 @@ const appointmentColumns = [
                         updateField("email", v);
                         if (v.trim()) setFormErrors((prev) => ({ ...prev, email: "" }));
                       }} type="email" error={formErrors.email} />
-                      <Field label="Date of Birth" value={form.dob} onChange={(v) => updateField("dob", v)} type="date" />
+                      <Field
+                        label="Date of Birth"
+                        value={form.dob || dateInputValue(doctor?.dob)}
+                        onChange={(v) => updateField("dob", v)}
+                        type="date"
+                      />
                       <label className="block">
                         <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          Gender *
+                          Gender <span className="ml-1 text-destructive">*</span>
                         </span>
                         <select
                           value={form.gender}
@@ -1570,7 +1607,8 @@ const appointmentColumns = [
                   <SectionCard title="Professional Information" description="Registration, specialization, experience and consultation fees.">
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <Field label="Registration Number *" value={String(doctor?.medical_registration_number ?? doctor?.registration_number_mask ?? "—")} disabled />
-                      <Field label="Registration Year *" value={form.registration_year} onChange={(v) => updateField("registration_year", v)} />
+                      <Field label="Registration Year *" value={form.registration_year} disabled />
+                      <Field label="Medical Council" value={String(doctor?.medical_council_id ?? "—")} disabled />
                       <Field label="Specialization" value={doctor?.specialization_name ?? doctor?.specialization?.name ?? doctor?.specialty ?? "—"} disabled />
                       <Field label="Experience (Years)" value={form.experience_years} onChange={(v) => updateField("experience_years", v)} type="number" />
                       <Field label="Online Consultation Fee" value={form.online_consultation_fee} onChange={(v) => updateField("online_consultation_fee", v)} type="number" disabled />
@@ -1594,6 +1632,105 @@ const appointmentColumns = [
                     </div>
                   </SectionCard>
                 </div>
+
+                <SectionCard
+                  title="Professional Experience"
+                  description="Professional positions and work experience submitted by the doctor."
+                >
+                  <div className="space-y-4">
+                    {professionals.length > 0 ? (
+                      professionals.map((professional: any, index: number) => (
+                        <div
+                          key={professional.id ?? `professional-${index}`}
+                          className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+                        >
+                          <Field
+                            label="Designation"
+                            value={professional.designation ?? ""}
+                            disabled
+                          />
+
+                          <Field
+                            label="Department"
+                            value={professional.department ?? ""}
+                            disabled
+                          />
+
+                          <Field
+                            label="Institute"
+                            value={professional.institute ?? ""}
+                            disabled
+                          />
+
+                          <Field
+                            label="City"
+                            value={professional.city_name ?? ""}
+                            disabled
+                          />
+
+                          <Field
+                            label="State"
+                            value={professional.state_name ?? ""}
+                            disabled
+                          />
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        No professional experience available.
+                      </p>
+                    )}
+                  </div>
+                </SectionCard>
+                <SectionCard
+                  title="Qualifications"
+                  description="Educational qualifications and medical degrees submitted by the doctor."
+                >
+                  <div className="space-y-4">
+                    {qualifications.length > 0 ? (
+                      qualifications.map((qualification: any, index: number) => (
+                        <div
+                          key={qualification.id ?? `qualification-${index}`}
+                          className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+                        >
+                          <Field
+                            label="Degree"
+                            value={qualification.degree_name ?? ""}
+                            disabled
+                          />
+
+                          <Field
+                            label="Specialization"
+                            value={qualification.qualification_specialization_name ?? ""}
+                            disabled
+                          />
+
+                          <Field
+                            label="College"
+                            value={qualification.college_name ?? ""}
+                            disabled
+                          />
+
+                          <Field
+                            label="State"
+                            value={qualification.college_state ?? ""}
+                            disabled
+                          />
+
+                          <Field
+                            label="Year of Completion"
+                            value={String(qualification.year_of_completion ?? "")}
+                            disabled
+                          />
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        No qualifications available.
+                      </p>
+                    )}
+                  </div>
+                </SectionCard>
 
                 <SectionCard
                   title="Clinic Information"
@@ -2229,14 +2366,23 @@ const appointmentColumns = [
                         />
                       </div>
 
-                      <StandardPagination
-                        currentPage={Number(earningsCurrentPage)}
-                        lastPage={Number(earningsLastPage)}
-                        total={Number(earningsTotal)}
-                        from={Number(earningsFrom)}
-                        to={Number(earningsTo)}
-                        onPageChange={setEarningsPage}
-                      />
+                      <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-xs text-muted-foreground/80">
+                          Showing{" "}
+                          <span className="font-medium text-muted-foreground">
+                            {earningsFrom}
+                          </span>
+                          {" – "}
+                          <span className="font-medium text-muted-foreground">
+                            {earningsTo}
+                          </span>
+                        </p>
+                        <Pagination
+                          currentPage={Number(earningsCurrentPage)}
+                          totalPages={Number(earningsTotal)}
+                          onPageChange={setEarningsPage}
+                        />
+                      </div>
                     </>
                   ) : (
                     <EmptyState

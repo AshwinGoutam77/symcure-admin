@@ -149,7 +149,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Attention */}
-      {!isLoading && (
+      {/* {!isLoading && (
         <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
           <AttentionCard
             tone="warning" icon={<Clock3 />} href="/appointments"
@@ -167,10 +167,10 @@ export default function DashboardPage() {
             description="Suspended doctors with active appointments."
           />
         </div>
-      )}
+      )} */}
 
       {/* Charts */}
-      <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
+      {/* <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
         <ChartCard
           title="Revenue split · this month"
           description="Platform commission vs. doctor payout on billed consultations"
@@ -198,7 +198,7 @@ export default function DashboardPage() {
             valueFormatter={(v) => formatNumber(v)} height={200}
           />
         </ChartCard>
-      </div>
+      </div> */}
 
       {/* Pending applications + quick actions */}
       <div className="mt-6 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">

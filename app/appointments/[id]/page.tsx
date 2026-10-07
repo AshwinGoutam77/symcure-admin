@@ -420,6 +420,10 @@ export default function AppointmentDetail() {
                     <p className="truncate text-sm font-semibold text-foreground">
                       {patientName}
                     </p>
+                     <p className="max-w-[180px] truncate text-xs font-normal text-muted-foreground/80">
+                        {(patient?.guardian_name && patient?.guardian_type) && patient?.guardian_type + " " + patient?.guardian_name}
+                      </p>
+
 
                     <p className="mt-0.5 text-xs text-muted-foreground/80">
                       {patient?.code ??
@@ -498,7 +502,6 @@ export default function AppointmentDetail() {
                     <p className="truncate text-sm font-semibold text-foreground">
                       {doctorName}
                     </p>
-
                     <p className="mt-0.5 text-xs text-muted-foreground/80">
                       {doctor?.code ??
                         appointment?.doctor_code ??

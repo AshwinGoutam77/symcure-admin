@@ -604,6 +604,11 @@ export default function ApplicationsPage() {
                   },
                 ]}
                 data={isLoading ? [] : rows}
+  //                 onRowClick={(row) => {
+  //   router.push(
+  //     `/applications/${row.id}`
+  //   );
+  // }}
               />
             </div>
 
