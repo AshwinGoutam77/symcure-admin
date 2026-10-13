@@ -3,15 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ChevronDown, FileSearch, Search } from "lucide-react";
+import { ChevronDown, FileSearch, MapPin, Newspaper, PanelsTopLeft, Search, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getAdminMe } from "@/lib/api/admin";
 import { useAdminQuery } from "@/hooks/use-admin-api";
 import { appIcons } from "@/lib/icons";
+import { MASTER_RESOURCES } from "@/lib/masters";
 
 interface SubItem {
   label: string;
   href: string;
+  /** One key or several (visible when the role can view any of them) */
+  permissionKey?: string | string[];
+  superAdminOnly?: boolean;
 }
 
 interface NavItem {
@@ -20,7 +24,7 @@ interface NavItem {
   badge?: number;
   icon: React.ElementType;
   subItems?: SubItem[];
-  permissionKey?: string;
+  permissionKey?: string | string[];
   superAdminOnly?: boolean;
   disabled?: boolean;
   comingSoon?: boolean;
@@ -31,29 +35,26 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const importItems: SubItem[] = [
-  { label: "Import Medicine", href: "/import-master-date/medicines" },
-  { label: "Import Test", href: "/import-master-date/tests" },
-  { label: "Import Symptom", href: "/import-master-date/symptoms" },
-  { label: "Import Diagnosis", href: "/import-master-date/diagnosis" },
-  { label: "Import Medical Council", href: "/import-master-date/medical-council" },
-  { label: "Colleges", href: "/import-master-date/colleges" },
-  { label: "Specialization", href: "/import-master-date/specializations" },
-  { label: "Qualification", href: "/import-master-date/qualifications" },
+const masterItems: SubItem[] = [
+  ...MASTER_RESOURCES.map((resource) => ({
+    label: resource.label,
+    href: `/masters/${resource.key}`,
+    permissionKey: resource.key,
+  })),
+  { label: "Lookup Options", href: "/lookup-options", permissionKey: "lookup_options" },
 ];
 
-const previewItems: SubItem[] = [
-  { label: "Medicine", href: "/import-master-date/preview/medicines" },
-  { label: "Test", href: "/import-master-date/preview/tests" },
-  { label: "Symptom", href: "/import-master-date/preview/symptoms" },
-  { label: "Diagnosis", href: "/import-master-date/preview/diagnosis" },
-  { label: "Medical Council", href: "/import-master-date/preview/medical-council" },
-  { label: "Colleges", href: "/import-master-date/preview/colleges" },
-  { label: "Specialization", href: "/import-master-date/preview/specializations" },
-  { label: "Qualification", href: "/import-master-date/preview/qualifications" },
+const locationItems: SubItem[] = [
+  { label: "States", href: "/states", permissionKey: "states" },
+  { label: "Districts", href: "/districts", permissionKey: "districts" },
+  { label: "Cities", href: "/cities", permissionKey: "cities" },
 ];
 
-/** Same routes, permissions and availability flags as before — only grouped for scanability. */
+const contentItems: SubItem[] = [
+  { label: "Static Content", href: "/app-content", permissionKey: "app_content" },
+  // { label: "Seasonal Health", href: "/seasonal-health", permissionKey: "seasonal_health" },
+];
+
 const navGroups: NavGroup[] = [
   {
     label: "Overview",
@@ -66,31 +67,35 @@ const navGroups: NavGroup[] = [
       { label: "Applications", href: "/applications", icon: appIcons.applications, permissionKey: "doctor_applications" },
       { label: "Appointments", href: "/appointments", icon: appIcons.appointments, permissionKey: "appointments" },
       { label: "Patients", href: "/patients", icon: appIcons.patients, permissionKey: "patients" },
-      { label: "App Specialty Groups", href: "/app-specialty-groups", icon: appIcons.specialties, permissionKey: "app_specialty_groups" },
-      {
-  label: "App Search Keywords",
-  href: "/app-search-keywords",
-  icon: Search,
-},
     ],
   },
   {
     label: "Business",
     items: [
-      { label: "Finance", href: "/finance", icon: appIcons.finance, permissionKey: "earnings"},
+      { label: "App Specialty Groups", href: "/app-specialty-groups", icon: appIcons.specialties, permissionKey: "app_specialty_groups" },
+      { label: "App Search Keywords", href: "/app-search-keywords", icon: Search, permissionKey: "app_search_keywords" },
+      { label: "Patient Search Logs", href: "/patient-search-logs", icon: FileSearch, permissionKey: "patient_search_logs" },
+      { label: "App Content", icon: Newspaper, subItems: contentItems },
+      { label: "Finance", href: "/finance", icon: appIcons.finance, permissionKey: "earnings" },
       { label: "Audit Log", href: "/audit-log", icon: appIcons.audit, permissionKey: "activity_logs" },
-      // { label: "Notif. Log", href: "/notifications", icon: appIcons.notifications, permissionKey: "notifications" },
     ],
   },
   {
     label: "Administration",
     items: [
-      { label: "Master Data", icon: appIcons.masterData, subItems: importItems },
-      { label: "Preview Data", icon: appIcons.preview, subItems: previewItems },
-      { label: "Roles", href: "/roles", icon: appIcons.roles, permissionKey: "roles", superAdminOnly: true},
-      { label: "Role Permissions", href: "/role-permission", icon: appIcons.permissions, permissionKey: "role_permissions", superAdminOnly: true},
-      { label: "System Users", href: "/system-users", icon: appIcons.systemUsers, permissionKey: "system_users"},
-      { label: "Settings", href: "/settings", icon: appIcons.settings, permissionKey: "settings"},
+      { label: "Master Data", icon: appIcons.masterData, subItems: masterItems },
+      { label: "Master Imports", href: "/imports", icon: Upload, permissionKey: "imports" },
+      { label: "Locations", icon: MapPin, subItems: locationItems },
+      { label: "Roles", href: "/roles", icon: appIcons.roles, permissionKey: "roles", superAdminOnly: true },
+      { label: "Menus", href: "/menus", icon: PanelsTopLeft, permissionKey: "menus", superAdminOnly: true },
+      { label: "Role Permissions", href: "/role-permission", icon: appIcons.permissions, permissionKey: "role_permissions", superAdminOnly: true },
+      { label: "System Users", href: "/system-users", icon: appIcons.systemUsers, permissionKey: "system_users" },
+      {
+        label: "Settings",
+        href: "/settings",
+        icon: appIcons.settings,
+        permissionKey: ["system_settings", "payment_settings", "settings"],
+      },
     ],
   },
 ];
@@ -109,13 +114,20 @@ export function MainNav({ isCollapsed = false, onNavigate }: MainNavProps) {
   const permissions = adminSession?.permissions ?? null;
   const isSuperAdmin = Boolean(adminSession?.role?.is_super_admin);
 
-  const canView = (item: NavItem) => {
-    if (item.superAdminOnly && !isSuperAdmin) return false;
-    if (!item.permissionKey || item.permissionKey === "dashboard") return true;
+  const allowed = (entry: { permissionKey?: string | string[]; superAdminOnly?: boolean }) => {
+    if (entry.superAdminOnly && !isSuperAdmin) return false;
+    if (!entry.permissionKey || entry.permissionKey === "dashboard") return true;
     if (isSuperAdmin) return true;
-    if (!permissions) return true;
-    const permission = permissions.find((p: any) => p.key === item.permissionKey || p.slug === item.permissionKey);
-    return Boolean(permission?.permissions?.view);
+    if (!permissions) return false;
+    const keys = Array.isArray(entry.permissionKey) ? entry.permissionKey : [entry.permissionKey];
+    return permissions.some(
+      (p: any) => (keys.includes(p.key) || keys.includes(p.slug)) && Boolean(p.permissions?.view),
+    );
+  };
+
+  const canView = (item: NavItem) => {
+    if (item.subItems) return item.subItems.some(allowed);
+    return allowed(item);
   };
 
   const allItems = navGroups.flatMap((g) => g.items);
@@ -196,7 +208,7 @@ export function MainNav({ isCollapsed = false, onNavigate }: MainNavProps) {
                       </button>
                       {isOpen && !isCollapsed && (
                         <div className="ml-5 mt-1 flex flex-col gap-0.5 border-l border-sidebar-border pl-3">
-                          {item.subItems!.map((sub) => (
+                          {item.subItems!.filter(allowed).map((sub) => (
                             <Link
                               key={sub.href}
                               href={sub.href}

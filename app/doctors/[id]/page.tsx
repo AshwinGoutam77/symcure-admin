@@ -18,6 +18,7 @@ import {
   Lock,
   RefreshCw,
   Save,
+  Trash2,
   UserCheck,
   UserX,
   X,
@@ -25,6 +26,7 @@ import {
 
 import {
   approveApplication,
+  deleteDoctor,
   getAppointments,
   getDoctor,
   getDoctorSchedule,
@@ -42,6 +44,10 @@ import { StatusBadge } from "@/components/status-badge";
 import { DataTable } from "@/components/data-table";
 import { useToast } from "@/components/ui/use-toast";
 import { Pagination } from "@/components/pagination";
+import { DoctorDocuments } from "@/components/admin/doctor-documents";
+import { ConfirmDialog, InlineNotice } from "@/components/admin/kit";
+import { usePermission } from "@/hooks/use-permission";
+import { apiErrorMessage, errorCode, errorDetails } from "@/lib/api/errors";
 
 const TABS = [
   "Profile Info",
@@ -76,6 +82,8 @@ type FormState = {
   online_consultation_fee: string;
   show_fees_on_app: boolean;
   visible_on_app: boolean;
+  serial_token_mode: boolean;
+  app_appointment_token_start: string;
   bio: string;
 };
 
@@ -101,6 +109,8 @@ const emptyForm: FormState = {
   online_consultation_fee: "",
   show_fees_on_app: true,
   visible_on_app: true,
+  serial_token_mode: false,
+  app_appointment_token_start: "",
   bio: "",
 };
 
@@ -356,6 +366,10 @@ export default function AdminDoctorDetailPage() {
   };
 
   const { toast } = useToast();
+  const perm = usePermission("doctors");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [liveAppointments, setLiveAppointments] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("Profile Info");
   const [form, setForm] = useState<FormState>(emptyForm);
   const [actionModal, setActionModal] = useState<"suspend" | "reject" | null>(null);
@@ -443,10 +457,17 @@ export default function AdminDoctorDetailPage() {
     doctor?.application ??
     {};
 
-  const documents =
-    doctorResponse?.documents ??
-    doctor?.documents ??
-    [];
+  const documents: any[] = Array.isArray(doctorResponse?.documents)
+    ? doctorResponse.documents
+    : Array.isArray(doctor?.documents)
+      ? doctor.documents
+      : [];
+
+  const profilePhotoUrl: string | null =
+    doctorResponse?.profile_photo?.url ?? doctor?.profile_photo?.url ?? doctor?.profile_photo_url ?? null;
+
+  const medicalCouncilName: string =
+    doctor?.medical_council_name ?? doctorResponse?.medical_council_name ?? "";
 
 
   const commission =
@@ -467,6 +488,26 @@ export default function AdminDoctorDetailPage() {
   const statusMutation = useAdminMutation<{ status: "active" | "suspended"; reason?: string }, unknown>(
     (body) => setDoctorStatus(id, body),
   );
+
+  const deleteDoctorMutation = useAdminMutation<void, unknown>(() => deleteDoctor(id));
+
+  const handleDeleteDoctor = async () => {
+    setDeleteError("");
+    setLiveAppointments(null);
+    try {
+      await deleteDoctorMutation.mutateAsync();
+      toast({ title: "Doctor deleted", description: `${doctorName} was removed from the admin list and the app.` });
+      router.replace("/doctors");
+    } catch (error) {
+      if (errorCode(error) === "DOCTOR_HAS_LIVE_APPOINTMENTS") {
+        const details = errorDetails<any>(error);
+        const live = details?.live_appointments;
+        setLiveAppointments(Array.isArray(live) ? live.length : Number(live ?? 0) || 1);
+        return;
+      }
+      setDeleteError(apiErrorMessage(error, "Couldn't delete the doctor."));
+    }
+  };
 
   const rejectMutation = useAdminMutation<string, unknown>(
     (value) => rejectApplication(String(application?.id ?? doctor?.application_id ?? ""), value),
@@ -563,6 +604,8 @@ export default function AdminDoctorDetailPage() {
       online_consultation_fee: String(d.online_consultation_fee ?? d.online_fee ?? ""),
       show_fees_on_app: Boolean(d.show_fees_on_app),
       visible_on_app: d.visible_on_app !== false,
+      serial_token_mode: Boolean(d.serial_token_mode ?? doctorResponse?.serial_token_mode),
+      app_appointment_token_start: String(d.app_appointment_token_start ?? doctorResponse?.app_appointment_token_start ?? ""),
       bio: d.bio ?? "",
     });
 
@@ -761,6 +804,13 @@ export default function AdminDoctorDetailPage() {
       errors.gender = "Gender is required.";
     }
 
+    if (form.app_appointment_token_start) {
+      const tokenStart = Number(form.app_appointment_token_start);
+      if (!Number.isInteger(tokenStart) || tokenStart < 1 || tokenStart > 9999) {
+        errors.app_appointment_token_start = "Use a whole number from 1 to 9999.";
+      }
+    }
+
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       toast({
@@ -804,6 +854,10 @@ export default function AdminDoctorDetailPage() {
           : undefined,
         show_fees_on_app: form.show_fees_on_app,
         visible_on_app: form.visible_on_app,
+        serial_token_mode: form.serial_token_mode,
+        app_appointment_token_start: form.app_appointment_token_start
+          ? Number(form.app_appointment_token_start)
+          : undefined,
         bio: form.bio || undefined,
       });
 
@@ -846,12 +900,16 @@ export default function AdminDoctorDetailPage() {
 
   const handleStatusAction = async () => {
     if (!reason.trim()) return;
-    await statusMutation.mutateAsync({
-      status: normalizeStatus(currentStatus) === "suspended" ? "active" : "suspended",
-      reason: reason.trim(),
-    });
-    setReason("");
-    setActionModal(null);
+    try {
+      await statusMutation.mutateAsync({
+        status: normalizeStatus(currentStatus) === "suspended" ? "active" : "suspended",
+        reason: reason.trim(),
+      });
+      setReason("");
+      setActionModal(null);
+    } catch (error) {
+      toast({ title: "Status not changed", description: apiErrorMessage(error), variant: "destructive" });
+    }
   };
 
   const handleReject = async () => {
@@ -866,16 +924,30 @@ export default function AdminDoctorDetailPage() {
   };
 
   const handleCommissionSave = async () => {
-    await commissionMutation.mutateAsync({
-      online_consultation_commission_amt: commissionForm.online
-        ? Number(commissionForm.online)
-        : 0,
-      clinic_consultation_commission_amt: commissionForm.clinic
-        ? Number(commissionForm.clinic)
-        : 0,
-    });
+    try {
+      await commissionMutation.mutateAsync({
+        online_consultation_commission_amt: commissionForm.online
+          ? Number(commissionForm.online)
+          : 0,
+        clinic_consultation_commission_amt: commissionForm.clinic
+          ? Number(commissionForm.clinic)
+          : 0,
+      });
+      toast({ title: "Commission saved" });
+      await doctorQuery.refetch();
+    } catch (error) {
+      toast({ title: "Commission not saved", description: apiErrorMessage(error), variant: "destructive" });
+    }
+  };
 
-    await doctorQuery.refetch();
+  const handleCommissionReset = async () => {
+    try {
+      await commissionMutation.mutateAsync({ reset_to_default: true });
+      toast({ title: "Commission reset to platform default" });
+      await doctorQuery.refetch();
+    } catch (error) {
+      toast({ title: "Reset failed", description: apiErrorMessage(error), variant: "destructive" });
+    }
   };
 
   if (doctorQuery.isLoading) {
@@ -1340,9 +1412,18 @@ export default function AdminDoctorDetailPage() {
               {/* Doctor Info */}
               <div className="flex min-w-0 items-center gap-4">
                 {/* Avatar */}
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-base font-semibold text-muted-foreground">
-                  {initials(firstName, lastName)}
-                </div>
+                {profilePhotoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={profilePhotoUrl}
+                    alt={doctorName}
+                    className="h-14 w-14 shrink-0 rounded-full border border-border object-cover"
+                  />
+                ) : (
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-base font-semibold text-muted-foreground">
+                    {initials(firstName, lastName)}
+                  </div>
+                )}
 
                 {/* Details */}
                 <div className="min-w-0">
@@ -1490,6 +1571,7 @@ export default function AdminDoctorDetailPage() {
               )}
 
               {/* Suspend / Reactivate */}
+              {perm.edit && (
               <Button
                 variant={
                   normalizeStatus(currentStatus) === "suspended"
@@ -1512,6 +1594,22 @@ export default function AdminDoctorDetailPage() {
                   ? "Reactivate Account"
                   : "Suspend Account"}
               </Button>
+              )}
+
+              {perm.delete && (
+                <Button
+                  variant="outline"
+                  className="h-10 w-full border-destructive/25 bg-card text-xs font-semibold text-destructive hover:bg-destructive-soft hover:text-destructive"
+                  onClick={() => {
+                    setDeleteError("");
+                    setLiveAppointments(null);
+                    setDeleteOpen(true);
+                  }}
+                >
+                  <Trash2 className="mr-1.5 size-4" />
+                  Delete Doctor
+                </Button>
+              )}
             </div>
           </aside>
         </div>
@@ -1608,7 +1706,7 @@ export default function AdminDoctorDetailPage() {
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <Field label="Registration Number *" value={String(doctor?.medical_registration_number ?? doctor?.registration_number_mask ?? "—")} disabled />
                       <Field label="Registration Year *" value={form.registration_year} disabled />
-                      <Field label="Medical Council" value={String(doctor?.medical_council_id ?? "—")} disabled />
+                      <Field label="Medical Council" value={medicalCouncilName || (doctor?.medical_council_id ? `#${doctor.medical_council_id}` : "—")} disabled />
                       <Field label="Specialization" value={doctor?.specialization_name ?? doctor?.specialization?.name ?? doctor?.specialty ?? "—"} disabled />
                       <Field label="Experience (Years)" value={form.experience_years} onChange={(v) => updateField("experience_years", v)} type="number" />
                       <Field label="Online Consultation Fee" value={form.online_consultation_fee} onChange={(v) => updateField("online_consultation_fee", v)} type="number" disabled />
@@ -1629,6 +1727,23 @@ export default function AdminDoctorDetailPage() {
                         </span>
                         <input type="checkbox" checked={form.visible_on_app} onChange={(e) => updateField("visible_on_app", e.target.checked)} className="h-4 w-4 accent-primary" />
                       </label>
+                    </div>
+                    <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <label className="flex items-center justify-between rounded-lg border border-border bg-muted/50 px-3 py-2.5">
+                        <span>
+                          <span className="block text-sm font-semibold text-foreground/80">Serial token mode</span>
+                          <span className="block text-xs text-muted-foreground/80">Clinic appointments get serial token numbers.</span>
+                        </span>
+                        <input type="checkbox" checked={form.serial_token_mode} onChange={(e) => updateField("serial_token_mode", e.target.checked)} className="h-4 w-4 accent-primary" />
+                      </label>
+                      <Field
+                        label="App appointment token start"
+                        value={form.app_appointment_token_start}
+                        onChange={(v) => updateField("app_appointment_token_start", v)}
+                        type="number"
+                        placeholder="1 – 9999"
+                        error={formErrors.app_appointment_token_start}
+                      />
                     </div>
                   </SectionCard>
                 </div>
@@ -1901,7 +2016,8 @@ export default function AdminDoctorDetailPage() {
                       type="button"
                       variant="primary"
                       onClick={() => void handleSave()}
-                      disabled={saveDoctor.isPending}
+                      disabled={saveDoctor.isPending || !perm.edit}
+                      title={perm.edit ? undefined : "Your role can't edit doctors"}
                       className="ml-auto min-w-[140px] cursor-pointer"
                     >
                       {saveDoctor.isPending ? (
@@ -1922,54 +2038,7 @@ export default function AdminDoctorDetailPage() {
 
             {/* DOCUMENTS */}
             {activeTab === "Documents" && (
-              <SectionCard title="Uploaded Documents" description="Verification documents attached to this doctor profile.">
-                {documents.length ? (
-                  <div className="space-y-3">
-                    {documents.map((doc: any, index: number) => {
-                      const url = doc.url ?? doc.document_url ?? doc.file_url ?? null;
-                      const title = doc.title ?? doc.document_name ?? doc.type_label ?? doc.type ?? `Document ${index + 1}`;
-                      const size = doc.file_size_label ?? doc.size_label ?? (doc.file_size ? `${doc.file_size}` : "");
-                      const uploaded = doc.uploaded_at ?? doc.created_at;
-                      return (
-                        <div key={doc.id ?? index} className="flex flex-col gap-4 rounded-xl border border-border bg-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex min-w-0 items-center gap-3">
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                              <FileText className="size-5" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-foreground">{title}</p>
-                              <p className="mt-1 text-xs text-muted-foreground/80">
-                                {uploaded ? `Uploaded ${dateTimeLabel(uploaded)}` : "Uploaded document"}
-                                {doc.mime_type ? ` · ${doc.mime_type}` : ""}
-                                {size ? ` · ${size}` : ""}
-                              </p>
-                              {doc.is_mandatory ? <p className="mt-1 text-xs font-medium text-success">✓ Mandatory document</p> : null}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {url ? (
-                              <>
-                                <a href={url} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center rounded-md border border-border bg-card px-3 text-xs font-semibold text-foreground/80 hover:bg-muted/50">
-                                  <Eye className="mr-1.5 size-4" /> View
-                                </a>
-                                <a href={url} target="_blank" rel="noreferrer" download className="inline-flex h-8 items-center px-2 text-xs font-semibold text-primary hover:underline">
-                                  <Download className="mr-1.5 size-4" /> Download
-                                </a>
-                              </>
-                            ) : (
-                              <span className="inline-flex h-8 items-center rounded-md border border-border bg-muted px-3 text-xs font-semibold text-muted-foreground/80">
-                                View unavailable
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <EmptyState icon={<FileText className="size-5" />} title="No documents available" text="No document records were returned by the doctor-detail API." />
-                )}
-              </SectionCard>
+              <DoctorDocuments doctorId={id} documents={documents} canEdit={perm.edit} />
             )}
 
             {/* AVAILABILITY */}
@@ -2233,21 +2302,15 @@ export default function AdminDoctorDetailPage() {
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <Button onClick={() => void handleCommissionSave()} disabled={commissionMutation.isPending} className="h-10 bg-primary px-4 text-sm font-semibold text-white">
+                    <Button onClick={() => void handleCommissionSave()} disabled={commissionMutation.isPending || !perm.edit} className="h-10 bg-primary px-4 text-sm font-semibold text-white">
                       {commissionMutation.isPending ? <RefreshCw className="mr-2 size-4 animate-spin" /> : <Save className="mr-2 size-4" />}
                       Save Commission
                     </Button>
                     <Button
                       variant="outline"
                       className="h-10 text-xs"
-                      disabled={commissionMutation.isPending}
-                      onClick={async () => {
-                        await commissionMutation.mutateAsync({
-                          reset_to_default: true,
-                        });
-
-                        await doctorQuery.refetch();
-                      }}
+                      disabled={commissionMutation.isPending || !perm.edit}
+                      onClick={() => void handleCommissionReset()}
                     >
                       Reset to Default
                     </Button>
@@ -2543,6 +2606,47 @@ export default function AdminDoctorDetailPage() {
           </div>
         </Modal>
       )}
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => void handleDeleteDoctor()}
+        busy={deleteDoctorMutation.isPending}
+        confirmDisabled={liveAppointments !== null}
+        title="Delete doctor permanently"
+        confirmLabel="Delete permanently"
+        description={
+          liveAppointments === null
+            ? `${doctorName} will be removed from the admin list and the patient app, and logged out everywhere. The record stays in the database, but this can't be undone from the admin panel.`
+            : undefined
+        }
+        error={deleteError}
+      >
+        {liveAppointments !== null && (
+          <InlineNotice tone="warning">
+            <p>
+              {doctorName} has {liveAppointments} live or upcoming appointment{liveAppointments === 1 ? "" : "s"}, so the
+              account can&apos;t be deleted. Suspend the account instead — it blocks login and hides the doctor from the app
+              without touching appointments.
+            </p>
+            {perm.edit && normalizeStatus(currentStatus) !== "suspended" && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="mt-2 h-8 text-xs"
+                onClick={() => {
+                  setDeleteOpen(false);
+                  setReason("");
+                  setActionModal("suspend");
+                }}
+              >
+                Suspend instead
+              </Button>
+            )}
+          </InlineNotice>
+        )}
+      </ConfirmDialog>
     </div>
   );
 }

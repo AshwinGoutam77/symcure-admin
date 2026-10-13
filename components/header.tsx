@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useTheme } from "next-themes";
-import { ChevronLeft, ChevronRight, LogOut, Moon, Sun, User, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, LogOut, Moon, Sun, User, UserRound, X } from "lucide-react";
 
 import { MainNav } from "./main-nav";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -154,6 +154,12 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
               </div>
             </div>
             <DropdownMenuSeparator />
+            <DropdownMenuItem asChild className="cursor-pointer gap-2 py-2.5">
+              <Link href="/account" onClick={onMobileClose}>
+                <UserRound className="size-4" />
+                My account
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem
               className="cursor-pointer gap-2 py-2.5 text-destructive focus:text-destructive"
               onSelect={async (event) => {

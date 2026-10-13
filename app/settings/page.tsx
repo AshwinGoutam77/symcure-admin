@@ -1,636 +1,403 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  HardDrive,
-  Lock,
-  RefreshCw,
-  Save,
-  Settings2,
-} from "lucide-react";
-
+import { CreditCard, RefreshCw, Save, Settings2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { Input } from "@/components/ui/input";
+import { SectionCard } from "@/components/section-card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { FormField, InlineError, InlineNotice, LoadingBlock, NoAccess, SwitchRow, textareaClass } from "@/components/admin/kit";
+import { getPaymentSettings, getSystemSettings, updatePaymentSettings, updateSystemSettings } from "@/lib/api/admin";
+import { useAdminMutation, useAdminQuery } from "@/hooks/use-admin-api";
+import { usePermission } from "@/hooks/use-permission";
+import { apiErrorMessage, fieldErrors } from "@/lib/api/errors";
+import { cn } from "@/lib/utils";
 
-import {
-  getSystemSettings,
-  getPaymentSettings,
-  getAppSettings,
-  updateSystemSettings,
-  updatePaymentSettings,
-  updateAppSettings,
-} from "@/lib/api/admin";
+type Tab = "system" | "payment";
 
-import {
-  useAdminMutation,
-  useAdminQuery,
-} from "@/hooks/use-admin-api";
+function settingsOf(payload: any): Record<string, any> {
+  return payload?.settings ?? payload ?? {};
+}
+
+function prettyJson(value: unknown) {
+  if (value === null || value === undefined || value === "") return "";
+  if (typeof value === "string") {
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2);
+    } catch {
+      return value;
+    }
+  }
+  return JSON.stringify(value, null, 2);
+}
+
+const SYSTEM_GROUPS: Array<{
+  title: string;
+  description: string;
+  fields: Array<{ key: string; label: string; type?: string; placeholder?: string }>;
+}> = [
+  {
+    title: "Support",
+    description: "Shown to patients and doctors when they need help.",
+    fields: [
+      { key: "support_email", label: "Support email", type: "email" },
+      { key: "support_mobile", label: "Support mobile" },
+      { key: "whatsapp_number", label: "WhatsApp number" },
+    ],
+  },
+  {
+    title: "Social links",
+    description: "Full profile URLs.",
+    fields: [
+      { key: "social_facebook", label: "Facebook", placeholder: "https://facebook.com/…" },
+      { key: "social_instagram", label: "Instagram", placeholder: "https://instagram.com/…" },
+      { key: "social_x", label: "X (Twitter)", placeholder: "https://x.com/…" },
+      { key: "social_linkedin", label: "LinkedIn", placeholder: "https://linkedin.com/…" },
+    ],
+  },
+  {
+    title: "Patient app",
+    description: "Store links and the current app version.",
+    fields: [
+      { key: "play_store_url", label: "Play Store URL" },
+      { key: "app_store_url", label: "App Store URL" },
+      { key: "patient_app_version", label: "Patient app version", placeholder: "e.g. 1.4.2" },
+    ],
+  },
+];
+
+const PDF_KEY = "default_prescription_pdf_format_setting";
+const PAY_NUMBER_KEYS = [
+  "default_commission_rate",
+  "clinic_consultation_commission_amt",
+  "online_consultation_commission_amt",
+  "online_free_cancellation_window_hours",
+  "online_late_penalty_percent",
+] as const;
+
+type PaymentForm = {
+  default_commission_rate: string;
+  clinic_consultation_commission_amt: string;
+  online_consultation_commission_amt: string;
+  free_cancellation_window_options: string;
+  online_free_cancellation_window_hours: string;
+  online_late_penalty_enabled: boolean;
+  online_late_penalty_percent: string;
+};
 
 export default function SettingsPage() {
-  /* ---------------------------------------------------------------------- */
-  /* Queries                                                                */
-  /* ---------------------------------------------------------------------- */
-
-  const system = useAdminQuery(
-    getSystemSettings,
-    ["admin", "system-settings"],
-  );
-
-  const payment = useAdminQuery(
-    getPaymentSettings,
-    ["admin", "payment-settings"],
-  );
-
-  const app = useAdminQuery(
-    getAppSettings,
-    ["admin", "app-settings"],
-  );
-
-  /* ---------------------------------------------------------------------- */
-  /* Mutations                                                              */
-  /* ---------------------------------------------------------------------- */
-
-  const saveSystem =
-    useAdminMutation<
-      Record<string, unknown>,
-      unknown
-    >(updateSystemSettings);
-
-  const savePayment =
-    useAdminMutation<
-      Record<string, unknown>,
-      unknown
-    >(updatePaymentSettings);
-
-  const saveApp =
-    useAdminMutation<string, unknown>(
-      updateAppSettings,
-    );
-
-  /* ---------------------------------------------------------------------- */
-  /* Forms                                                                  */
-  /* ---------------------------------------------------------------------- */
-
-  const [systemForm, setSystemForm] =
-    useState<Record<string, string>>({});
-
-  const [paymentForm, setPaymentForm] =
-    useState<Record<string, string>>({});
-
-  const [appVersion, setAppVersion] =
-    useState("");
-
-  /* ---------------------------------------------------------------------- */
-  /* Populate forms                                                         */
-  /* ---------------------------------------------------------------------- */
+  const systemPerm = usePermission("system_settings", "settings");
+  const paymentPerm = usePermission("payment_settings", "settings");
+  const [tab, setTab] = useState<Tab>("system");
 
   useEffect(() => {
-    setSystemForm(
-      ((system.data as any)?.settings ??
-        {}) as Record<string, string>,
-    );
-  }, [system.data]);
+    if (!systemPerm.loading && !systemPerm.view && paymentPerm.view) setTab("payment");
+  }, [systemPerm.loading, systemPerm.view, paymentPerm.view]);
+
+  const systemQuery = useAdminQuery(getSystemSettings, ["admin", "system-settings"], systemPerm.view);
+  const paymentQuery = useAdminQuery(getPaymentSettings, ["admin", "payment-settings"], paymentPerm.view);
+
+  const saveSystem = useAdminMutation<Record<string, unknown>, unknown>(updateSystemSettings);
+  const savePayment = useAdminMutation<Record<string, unknown>, unknown>(updatePaymentSettings);
+
+  /* ---------------- System ---------------- */
+  const [system, setSystem] = useState<Record<string, string>>({});
+  const [pdfJson, setPdfJson] = useState("");
+  const [systemErrors, setSystemErrors] = useState<Record<string, string>>({});
+  const [systemMessage, setSystemMessage] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
-    setPaymentForm(
-      ((payment.data as any)?.settings ??
-        {}) as Record<string, string>,
-    );
-  }, [payment.data]);
-
-  useEffect(() => {
-    setAppVersion(
-      String(
-        (app.data as any)?.settings
-          ?.patient_app_version ?? "",
-      ),
-    );
-  }, [app.data]);
-
-  /* ---------------------------------------------------------------------- */
-  /* Refresh                                                                */
-  /* ---------------------------------------------------------------------- */
-
-  function refreshAll() {
-    void system.refetch();
-    void payment.refetch();
-    void app.refetch();
-  }
-
-  /* ---------------------------------------------------------------------- */
-  /* Save handlers                                                          */
-  /* ---------------------------------------------------------------------- */
+    const s = settingsOf(systemQuery.data);
+    const next: Record<string, string> = {};
+    SYSTEM_GROUPS.flatMap((g) => g.fields).forEach((f) => {
+      next[f.key] = s[f.key] === null || s[f.key] === undefined ? "" : String(s[f.key]);
+    });
+    setSystem(next);
+    setPdfJson(prettyJson(s[PDF_KEY]));
+  }, [systemQuery.data]);
 
   async function handleSaveSystem() {
-    try {
-      await saveSystem.mutateAsync(
-        systemForm,
-      );
-
-      void system.refetch();
-    } catch {
-      // Error displayed through saveSystem.error.
+    setSystemMessage(null);
+    setSystemErrors({});
+    const body: Record<string, unknown> = {};
+    Object.entries(system).forEach(([key, value]) => {
+      body[key] = String(value ?? "").trim() || null;
+    });
+    if (pdfJson.trim()) {
+      try {
+        const parsed = JSON.parse(pdfJson);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("not an object");
+        body[PDF_KEY] = parsed;
+      } catch {
+        setSystemErrors({ [PDF_KEY]: 'This must be a valid JSON object, e.g. { "paper_size": "A4" }.' });
+        return;
+      }
     }
+    try {
+      await saveSystem.mutateAsync(body);
+      setSystemMessage({ ok: true, text: "System settings saved." });
+    } catch (error) {
+      setSystemErrors(fieldErrors(error));
+      setSystemMessage({ ok: false, text: apiErrorMessage(error) });
+    }
+  }
+
+  /* ---------------- Payment ---------------- */
+  const [payment, setPayment] = useState<PaymentForm>({
+    default_commission_rate: "",
+    clinic_consultation_commission_amt: "",
+    online_consultation_commission_amt: "",
+    free_cancellation_window_options: "",
+    online_free_cancellation_window_hours: "",
+    online_late_penalty_enabled: false,
+    online_late_penalty_percent: "",
+  });
+  const [windowOptionsWasArray, setWindowOptionsWasArray] = useState(true);
+  const [paymentErrors, setPaymentErrors] = useState<Record<string, string>>({});
+  const [paymentMessage, setPaymentMessage] = useState<{ ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    const s = settingsOf(paymentQuery.data);
+    const str = (v: unknown) => (v === null || v === undefined ? "" : String(v));
+    let options = s.free_cancellation_window_options;
+    if (typeof options === "string") {
+      try {
+        const parsed = JSON.parse(options);
+        if (Array.isArray(parsed)) options = parsed;
+      } catch {
+        /* plain comma list */
+      }
+    }
+    setWindowOptionsWasArray(Array.isArray(options) || options === undefined || options === null);
+    const penalty = s.online_late_penalty_enabled;
+    setPayment({
+      default_commission_rate: str(s.default_commission_rate),
+      clinic_consultation_commission_amt: str(s.clinic_consultation_commission_amt),
+      online_consultation_commission_amt: str(s.online_consultation_commission_amt),
+      free_cancellation_window_options: Array.isArray(options) ? options.join(", ") : str(options),
+      online_free_cancellation_window_hours: str(s.online_free_cancellation_window_hours),
+      online_late_penalty_enabled: penalty === true || penalty === 1 || penalty === "1" || penalty === "true",
+      online_late_penalty_percent: str(s.online_late_penalty_percent),
+    });
+  }, [paymentQuery.data]);
+
+  function setPay<K extends keyof PaymentForm>(key: K, value: PaymentForm[K]) {
+    setPayment((p) => ({ ...p, [key]: value }));
+    setPaymentErrors((e) => ({ ...e, [key]: "" }));
   }
 
   async function handleSavePayment() {
-    try {
-      await savePayment.mutateAsync(
-        paymentForm,
-      );
+    setPaymentMessage(null);
+    const errors: Record<string, string> = {};
+    const num = (v: string) => (v.trim() === "" ? null : Number(v));
+    PAY_NUMBER_KEYS.forEach((key) => {
+      const value = payment[key];
+      if (value.trim() !== "" && (Number.isNaN(Number(value)) || Number(value) < 0)) errors[key] = "Enter a number of 0 or more.";
+    });
+    if (payment.online_late_penalty_percent && Number(payment.online_late_penalty_percent) > 100) {
+      errors.online_late_penalty_percent = "Can't be more than 100%.";
+    }
+    const optionList = payment.free_cancellation_window_options
+      .split(",")
+      .map((v) => v.trim())
+      .filter(Boolean);
+    if (optionList.some((v) => Number.isNaN(Number(v)))) {
+      errors.free_cancellation_window_options = "Use numbers separated by commas, e.g. 2, 4, 6.";
+    }
+    setPaymentErrors(errors);
+    if (Object.keys(errors).length) return;
 
-      void payment.refetch();
-    } catch {
-      // Error displayed through savePayment.error.
+    try {
+      await savePayment.mutateAsync({
+        default_commission_rate: num(payment.default_commission_rate),
+        clinic_consultation_commission_amt: num(payment.clinic_consultation_commission_amt),
+        online_consultation_commission_amt: num(payment.online_consultation_commission_amt),
+        free_cancellation_window_options: windowOptionsWasArray ? optionList.map(Number) : optionList.join(","),
+        online_free_cancellation_window_hours: num(payment.online_free_cancellation_window_hours),
+        online_late_penalty_enabled: payment.online_late_penalty_enabled,
+        online_late_penalty_percent: num(payment.online_late_penalty_percent),
+      });
+      setPaymentMessage({ ok: true, text: "Payment settings saved. New appointments use these defaults." });
+    } catch (error) {
+      setPaymentErrors(fieldErrors(error));
+      setPaymentMessage({ ok: false, text: apiErrorMessage(error) });
     }
   }
 
-  async function handleSaveAppVersion() {
-    try {
-      await saveApp.mutateAsync(
-        appVersion,
-      );
+  if (!systemPerm.loading && !systemPerm.view && !paymentPerm.view) return <NoAccess />;
 
-      void app.refetch();
-    } catch {
-      // Error displayed through saveApp.error.
-    }
-  }
+  const tabs: Array<{ key: Tab; label: string; icon: React.ReactNode; visible: boolean }> = [
+    { key: "system", label: "System settings", icon: <Settings2 className="size-4" />, visible: systemPerm.view },
+    { key: "payment", label: "Payment settings", icon: <CreditCard className="size-4" />, visible: paymentPerm.view },
+  ];
 
-  const isRefreshing =
-    system.isLoading ||
-    payment.isLoading ||
-    app.isLoading;
-
-  const hasError =
-    system.error ||
-    payment.error ||
-    app.error ||
-    saveSystem.error ||
-    savePayment.error ||
-    saveApp.error;
+  const loading = tab === "system" ? systemQuery.isLoading : paymentQuery.isLoading;
+  const loadError = tab === "system" ? systemQuery.error : paymentQuery.error;
+  const canEdit = tab === "system" ? systemPerm.edit : paymentPerm.edit;
 
   return (
-    <div className="w-full">
-      <div className="space-y-5">
-
-        {/* ---------------------------------------------------------------- */}
-        {/* Header                                                           */}
-        {/* ---------------------------------------------------------------- */}
-
-        <PageHeader
-          breadcrumbs={[
-            { label: "Administration" },
-            { label: "Settings" },
-          ]}
-          title="Platform Settings"
-          description="Manage system, payment and application configuration from the Admin API."
-          className="mb-0"
-        />
-
-        {/* ---------------------------------------------------------------- */}
-        {/* Global Error                                                      */}
-        {/* ---------------------------------------------------------------- */}
-
-        {hasError && (
-          <div className="rounded-lg border border-destructive/25 bg-destructive-soft px-4 py-3">
-            <p className="text-xs font-semibold text-destructive">
-              Unable to update settings
-            </p>
-
-            <p className="mt-1 text-xs text-destructive">
-              {(
-                system.error ||
-                payment.error ||
-                app.error ||
-                saveSystem.error ||
-                savePayment.error ||
-                saveApp.error
-              )?.message ??
-                "Something went wrong. Please try again."}
-            </p>
-          </div>
-        )}
-
-        <div className="mt-5"></div>
-
-        {/* ---------------------------------------------------------------- */}
-        {/* System Settings                                                  */}
-        {/* ---------------------------------------------------------------- */}
-
-        <SettingsSection
-          icon={<Lock className="size-4" />}
-          title="System Settings"
-          description="Configure support and communication details used across the platform."
-          action={
-            <Button
-              type="button"
-              onClick={() =>
-                void handleSaveSystem()
-              }
-              disabled={
-                saveSystem.isPending ||
-                system.isLoading
-              }
-              className="h-9 rounded-lg px-4 text-xs font-semibold"
-            >
-              {saveSystem.isPending ? (
-                <>
-                  <RefreshCw className="mr-2 size-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 size-4" />
-                  Save Changes
-                </>
-              )}
-            </Button>
-          }
-        >
-          {system.isLoading ? (
-            <SettingsLoading />
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <SettingInput
-                label="Support Email"
-                value={
-                  systemForm.support_email ??
-                  ""
-                }
-                onChange={(value) =>
-                  setSystemForm((current) => ({
-                    ...current,
-                    support_email: value,
-                  }))
-                }
-              />
-
-              <SettingInput
-                label="Support Mobile"
-                value={
-                  systemForm.support_mobile ??
-                  ""
-                }
-                onChange={(value) =>
-                  setSystemForm((current) => ({
-                    ...current,
-                    support_mobile: value,
-                  }))
-                }
-              />
-
-              <SettingInput
-                label="WhatsApp Number"
-                value={
-                  systemForm.whatsapp_number ??
-                  ""
-                }
-                onChange={(value) =>
-                  setSystemForm((current) => ({
-                    ...current,
-                    whatsapp_number: value,
-                  }))
-                }
-              />
-            </div>
-          )}
-        </SettingsSection>
-
-        {/* ---------------------------------------------------------------- */}
-        {/* Application Settings                                             */}
-        {/* ---------------------------------------------------------------- */}
-
-        <SettingsSection
-          icon={<Settings2 className="size-4" />}
-          title="Application Settings"
-          description="Manage application-level configuration exposed to the platform."
-          action={
-            <Button
-              type="button"
-              onClick={() =>
-                void handleSaveAppVersion()
-              }
-              disabled={
-                saveApp.isPending ||
-                app.isLoading
-              }
-              className="h-9 rounded-lg px-4 text-xs font-semibold"
-            >
-              {saveApp.isPending ? (
-                <>
-                  <RefreshCw className="mr-2 size-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 size-4" />
-                  Save App Version
-                </>
-              )}
-            </Button>
-          }
-        >
-          {app.isLoading ? (
-            <SettingsLoading />
-          ) : (
-            <div className="max-w-md">
-              <SettingInput
-                label="Patient App Version"
-                value={appVersion}
-                onChange={setAppVersion}
-                placeholder="e.g. 1.0.0"
-              />
-            </div>
-          )}
-        </SettingsSection>
-
-        {/* ---------------------------------------------------------------- */}
-        {/* Payment Settings                                                 */}
-        {/* ---------------------------------------------------------------- */}
-
-        <SettingsSection
-          icon={<span className="text-xs font-bold">₹</span>}
-          title="Payment & Commission Defaults"
-          description="Configure the default commission values used for consultation payments."
-          action={
-            <Button
-              type="button"
-              onClick={() =>
-                void handleSavePayment()
-              }
-              disabled={
-                savePayment.isPending ||
-                payment.isLoading
-              }
-              className="h-9 rounded-lg px-4 text-xs font-semibold"
-            >
-              {savePayment.isPending ? (
-                <>
-                  <RefreshCw className="mr-2 size-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 size-4" />
-                  Save Changes
-                </>
-              )}
-            </Button>
-          }
-        >
-          {payment.isLoading ? (
-            <SettingsLoading />
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <SettingInput
-                label="Default Commission Rate %"
-                value={
-                  paymentForm.default_commission_rate ??
-                  ""
-                }
-                onChange={(value) =>
-                  setPaymentForm((current) => ({
-                    ...current,
-                    default_commission_rate:
-                      value,
-                  }))
-                }
-                type="number"
-              />
-
-              <SettingInput
-                label="Clinic Commission Amount ₹"
-                value={
-                  paymentForm
-                    .clinic_consultation_commission_amt ??
-                  ""
-                }
-                onChange={(value) =>
-                  setPaymentForm((current) => ({
-                    ...current,
-                    clinic_consultation_commission_amt:
-                      value,
-                  }))
-                }
-                type="number"
-              />
-
-              <SettingInput
-                label="Online Commission Amount ₹"
-                value={
-                  paymentForm
-                    .online_consultation_commission_amt ??
-                  ""
-                }
-                onChange={(value) =>
-                  setPaymentForm((current) => ({
-                    ...current,
-                    online_consultation_commission_amt:
-                      value,
-                  }))
-                }
-                type="number"
-              />
-            </div>
-          )}
-        </SettingsSection>
-
-        {/* ---------------------------------------------------------------- */}
-        {/* Platform Information                                             */}
-        {/* ---------------------------------------------------------------- */}
-
-        <section className="overflow-hidden rounded-lg bg-card shadow-sm">
-          <div className="border-b border-border/60 px-5 py-4">
-            <div className="flex items-center gap-2">
-              <div className="flex size-8 items-center justify-center rounded-md bg-primary/10">
-                <HardDrive className="size-4 text-primary" />
-              </div>
-
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">
-                  Platform Information
-                </h2>
-
-                <p className="mt-0.5 text-xs text-muted-foreground/80">
-                  Current platform architecture and security configuration.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-3 px-5 py-5 sm:grid-cols-2 lg:grid-cols-3">
-            <Info
-              label="API"
-              value="/api/v1"
-            />
-
-            <Info
-              label="Authentication"
-              value="HttpOnly admin session"
-            />
-
-            <Info
-              label="Authorization"
-              value="Server-side RBAC"
-            />
-          </div>
-        </section>
-
-        {/* ---------------------------------------------------------------- */}
-        {/* Footer                                                           */}
-        {/* ---------------------------------------------------------------- */}
-
-        <div className="flex items-center justify-between border-t border-border pt-4 text-xs text-muted-foreground/80">
-          <span>
-            Platform configuration
-          </span>
-
+    <>
+      <PageHeader
+        breadcrumbs={[{ label: "Administration" }, { label: "Settings" }]}
+        title="Settings"
+        description="Platform-wide defaults. Changes apply immediately."
+        actions={
           <Button
             type="button"
-            variant="ghost"
-            onClick={refreshAll}
-            disabled={isRefreshing}
-            className="h-8 px-2 text-xs"
+            variant="outline"
+            className="h-9 gap-1.5 text-xs"
+            onClick={() => void (tab === "system" ? systemQuery.refetch() : paymentQuery.refetch())}
           >
-            <RefreshCw
-              className={[
-                "mr-1.5 size-3.5",
-                isRefreshing &&
-                  "animate-spin",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            />
-            Refresh data
+            <RefreshCw className="size-4" /> Reload
           </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Settings Section                                                           */
-/* -------------------------------------------------------------------------- */
-
-function SettingsSection({
-  icon,
-  title,
-  description,
-  action,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="overflow-hidden rounded-lg bg-card shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-border/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <div className="flex size-8 items-center justify-center rounded-md bg-primary/10 text-primary">
-            {icon}
-          </div>
-
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">
-              {title}
-            </h2>
-
-            <p className="mt-0.5 text-xs text-muted-foreground/80">
-              {description}
-            </p>
-          </div>
-        </div>
-
-        {action}
-      </div>
-
-      <div className="px-5 py-5">
-        {children}
-      </div>
-    </section>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Setting Input                                                              */
-/* -------------------------------------------------------------------------- */
-
-function SettingInput({
-  label,
-  value,
-  onChange,
-  placeholder,
-  type = "text",
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  type?: string;
-}) {
-  return (
-    <div>
-      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.04em] text-muted-foreground">
-        {label}
-      </label>
-
-      <Input
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        onChange={(event) =>
-          onChange(event.target.value)
         }
-        className="h-9 rounded-lg border-border text-xs shadow-none"
       />
-    </div>
-  );
-}
 
-/* -------------------------------------------------------------------------- */
-/* Info                                                                       */
-/* -------------------------------------------------------------------------- */
-
-function Info({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.05em] text-muted-foreground">
-        {label}
-      </p>
-
-      <p className="mt-1 text-xs font-semibold text-foreground">
-        {value}
-      </p>
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* Loading                                                                    */
-/* -------------------------------------------------------------------------- */
-
-function SettingsLoading() {
-  return (
-    <div className="flex min-h-[100px] items-center justify-center">
-      <div className="text-center">
-        <RefreshCw className="mx-auto size-5 animate-spin text-primary" />
-
-        <p className="mt-2 text-xs text-muted-foreground">
-          Loading settings...
-        </p>
+      <div className="mb-5 flex gap-1 border-b border-border/60">
+        {tabs
+          .filter((t) => t.visible)
+          .map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              className={cn(
+                "relative flex items-center gap-1.5 px-3 py-2.5 text-sm font-semibold transition",
+                tab === t.key ? "text-primary" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {t.icon}
+              {t.label}
+              {tab === t.key && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary" />}
+            </button>
+          ))}
       </div>
-    </div>
+
+      {!canEdit && !loading && <InlineNotice className="mb-4">Your role can view these settings but not change them.</InlineNotice>}
+
+      {loading ? (
+        <LoadingBlock label="Loading settings…" />
+      ) : loadError ? (
+        <InlineError>{apiErrorMessage(loadError)}</InlineError>
+      ) : tab === "system" ? (
+        <div className="space-y-5">
+          {SYSTEM_GROUPS.map((group) => (
+            <SectionCard key={group.title} title={group.title} description={group.description}>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {group.fields.map((field) => (
+                  <FormField key={field.key} label={field.label} error={systemErrors[field.key]}>
+                    <Input
+                      type={field.type ?? "text"}
+                      value={system[field.key] ?? ""}
+                      placeholder={field.placeholder}
+                      disabled={!canEdit}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSystem((s) => ({ ...s, [field.key]: value }));
+                        setSystemErrors((er) => ({ ...er, [field.key]: "" }));
+                      }}
+                      className="h-9 text-sm"
+                    />
+                  </FormField>
+                ))}
+              </div>
+            </SectionCard>
+          ))}
+
+          <SectionCard
+            title="Default prescription PDF format"
+            description="JSON object used as the starting PDF layout for new doctors. Saved exactly as entered."
+          >
+            <FormField label="Format (JSON)" error={systemErrors[PDF_KEY]}>
+              <textarea
+                value={pdfJson}
+                disabled={!canEdit}
+                onChange={(e) => {
+                  setPdfJson(e.target.value);
+                  setSystemErrors((er) => ({ ...er, [PDF_KEY]: "" }));
+                }}
+                spellCheck={false}
+                className={cn(textareaClass, "min-h-[220px] font-mono text-xs")}
+              />
+            </FormField>
+          </SectionCard>
+
+          {systemMessage &&
+            (systemMessage.ok ? <InlineNotice tone="success">{systemMessage.text}</InlineNotice> : <InlineError>{systemMessage.text}</InlineError>)}
+          {canEdit && (
+            <div className="flex justify-end">
+              <Button type="button" className="h-9 gap-1.5 text-xs font-semibold" onClick={() => void handleSaveSystem()} disabled={saveSystem.isPending}>
+                {saveSystem.isPending ? <RefreshCw className="size-4 animate-spin" /> : <Save className="size-4" />}
+                Save system settings
+              </Button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-5">
+          <SectionCard title="Commission" description="Platform defaults. Doctors with a custom commission keep their own amounts.">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <FormField label="Default commission rate (%)" error={paymentErrors.default_commission_rate}>
+                <Input type="number" min={0} step="0.01" value={payment.default_commission_rate} disabled={!canEdit} onChange={(e) => setPay("default_commission_rate", e.target.value)} className="h-9 text-sm" />
+              </FormField>
+              <FormField label="Clinic consultation commission (₹)" error={paymentErrors.clinic_consultation_commission_amt}>
+                <Input type="number" min={0} value={payment.clinic_consultation_commission_amt} disabled={!canEdit} onChange={(e) => setPay("clinic_consultation_commission_amt", e.target.value)} className="h-9 text-sm" />
+              </FormField>
+              <FormField label="Online consultation commission (₹)" error={paymentErrors.online_consultation_commission_amt}>
+                <Input type="number" min={0} value={payment.online_consultation_commission_amt} disabled={!canEdit} onChange={(e) => setPay("online_consultation_commission_amt", e.target.value)} className="h-9 text-sm" />
+              </FormField>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Cancellation" description="How long before an appointment patients can cancel for free.">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                label="Free cancellation window options (hours)"
+                hint="Choices doctors can pick from, comma separated."
+                error={paymentErrors.free_cancellation_window_options}
+              >
+                <Input value={payment.free_cancellation_window_options} placeholder="2, 4, 6, 12, 24" disabled={!canEdit} onChange={(e) => setPay("free_cancellation_window_options", e.target.value)} className="h-9 text-sm" />
+              </FormField>
+              <FormField label="Online free cancellation window (hours)" error={paymentErrors.online_free_cancellation_window_hours}>
+                <Input type="number" min={0} value={payment.online_free_cancellation_window_hours} disabled={!canEdit} onChange={(e) => setPay("online_free_cancellation_window_hours", e.target.value)} className="h-9 text-sm" />
+              </FormField>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Late cancellation penalty" description="Applied to online appointments cancelled after the free window.">
+            <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
+              <SwitchRow
+                label="Charge a late cancellation penalty"
+                checked={payment.online_late_penalty_enabled}
+                disabled={!canEdit}
+                onChange={(v) => setPay("online_late_penalty_enabled", v)}
+              />
+              <FormField label="Penalty (%)" error={paymentErrors.online_late_penalty_percent}>
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={payment.online_late_penalty_percent}
+                  disabled={!canEdit || !payment.online_late_penalty_enabled}
+                  onChange={(e) => setPay("online_late_penalty_percent", e.target.value)}
+                  className="h-9 text-sm"
+                />
+              </FormField>
+            </div>
+          </SectionCard>
+
+          {paymentMessage &&
+            (paymentMessage.ok ? <InlineNotice tone="success">{paymentMessage.text}</InlineNotice> : <InlineError>{paymentMessage.text}</InlineError>)}
+          {canEdit && (
+            <div className="flex justify-end">
+              <Button type="button" className="h-9 gap-1.5 text-xs font-semibold" onClick={() => void handleSavePayment()} disabled={savePayment.isPending}>
+                {savePayment.isPending ? <RefreshCw className="size-4 animate-spin" /> : <Save className="size-4" />}
+                Save payment settings
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </>
   );
 }

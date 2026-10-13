@@ -1,5 +1,8 @@
 "use client";
 
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+
 import { useEffect, useMemo, useState } from "react";
 import {
   Check,
@@ -32,8 +35,9 @@ const PERMISSIONS = [
 
 type PermissionKey = (typeof PERMISSIONS)[number];
 
-export default function RolePermissionsPage() {
-  const [roleId, setRoleId] = useState("");
+function RolePermissionsContent() {
+  const searchParams = useSearchParams();
+  const [roleId, setRoleId] = useState(searchParams.get("role_id") ?? "");
   const [menus, setMenus] = useState<any[]>([]);
 
   /* ---------------------------------------------------------------------- */
@@ -564,5 +568,13 @@ export default function RolePermissionsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function RolePermissionsPage() {
+  return (
+    <Suspense fallback={null}>
+      <RolePermissionsContent />
+    </Suspense>
   );
 }

@@ -11,10 +11,17 @@ import {
   Phone,
   ShieldCheck,
   User,
+  Trash2,
+  UserCheck,
+  UserX,
 } from "lucide-react";
+import { useState } from "react";
 
-import { getPatient } from "@/lib/api/admin";
-import { useAdminQuery } from "@/hooks/use-admin-api";
+import { deletePatient, getPatient, setPatientStatus } from "@/lib/api/admin";
+import { useAdminMutation, useAdminQuery } from "@/hooks/use-admin-api";
+import { ConfirmDialog, InlineNotice } from "@/components/admin/kit";
+import { usePermission } from "@/hooks/use-permission";
+import { apiErrorMessage, errorCode } from "@/lib/api/errors";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDate, formatDateTime, formatLabel, getInitials } from "@/lib/formatters";
@@ -126,6 +133,40 @@ export default function PatientDetailPage() {
   const initials = getInitials(name);
 
   const address = buildAddress(patient.address);
+
+  const perm = usePermission("patients");
+  const [confirm, setConfirm] = useState<"status" | "delete" | null>(null);
+  const [actionError, setActionError] = useState("");
+  const [blockedReason, setBlockedReason] = useState("");
+  const isSuspended = status === "suspended";
+  const isAppAccount = Boolean(patient.is_app_account);
+  const isChildProfile = Boolean((patient as any).parent_account);
+
+  const statusMutation = useAdminMutation<"active" | "suspended", unknown>((next) => setPatientStatus(id, next));
+  const deleteMutation = useAdminMutation<void, unknown>(() => deletePatient(id));
+
+  const runAction = async () => {
+    setActionError("");
+    setBlockedReason("");
+    try {
+      if (confirm === "status") {
+        await statusMutation.mutateAsync(isSuspended ? "active" : "suspended");
+        setConfirm(null);
+      } else if (confirm === "delete") {
+        await deleteMutation.mutateAsync();
+        router.replace("/patients");
+      }
+    } catch (err) {
+      const code = errorCode(err);
+      if (code === "PATIENT_HAS_LIVE_APPOINTMENTS") {
+        setBlockedReason("This account has a live appointment right now. Try again after it's finished, or suspend the account instead.");
+      } else if (code === "NOT_APP_ACCOUNT") {
+        setBlockedReason("This patient was created by a doctor and has no app login, so it can't be suspended or deleted here.");
+      } else {
+        setActionError(apiErrorMessage(err));
+      }
+    }
+  };
 
   /* ------------------------------------------------------------------------ */
   /* Loading                                                                   */
@@ -320,6 +361,50 @@ export default function PatientDetailPage() {
             </div>
           </div>
         </section>
+
+        {isAppAccount && (perm.edit || perm.delete) && (
+          <section className="flex flex-col gap-3 rounded-lg bg-card px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground">App account</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {isChildProfile
+                  ? "Actions apply to the whole login account this family member belongs to."
+                  : "Suspending blocks app login. The patient stays fully usable on the doctor side."}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {perm.edit && (
+                <Button
+                  type="button"
+                  variant={isSuspended ? "primary" : "warning"}
+                  className="h-9 gap-1.5 text-xs"
+                  onClick={() => {
+                    setActionError("");
+                    setBlockedReason("");
+                    setConfirm("status");
+                  }}
+                >
+                  {isSuspended ? <UserCheck className="size-4" /> : <UserX className="size-4" />}
+                  {isSuspended ? "Reactivate account" : "Suspend account"}
+                </Button>
+              )}
+              {perm.delete && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 gap-1.5 border-destructive/25 text-xs text-destructive hover:bg-destructive-soft hover:text-destructive"
+                  onClick={() => {
+                    setActionError("");
+                    setBlockedReason("");
+                    setConfirm("delete");
+                  }}
+                >
+                  <Trash2 className="size-4" /> Delete account
+                </Button>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* ---------------------------------------------------------------- */}
         {/* Patient Information                                               */}
@@ -543,6 +628,27 @@ export default function PatientDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={confirm !== null}
+        onClose={() => setConfirm(null)}
+        onConfirm={() => void runAction()}
+        busy={statusMutation.isPending || deleteMutation.isPending}
+        tone={confirm === "delete" || !isSuspended ? "destructive" : "default"}
+        confirmDisabled={Boolean(blockedReason)}
+        title={confirm === "delete" ? "Delete patient account" : isSuspended ? "Reactivate account" : "Suspend account"}
+        confirmLabel={confirm === "delete" ? "Delete account" : isSuspended ? "Reactivate" : "Suspend"}
+        description={
+          confirm === "delete"
+            ? "The whole app account and all its family profiles are deleted, the same way as when a patient deletes their account. Clinical and payment records are kept."
+            : isSuspended
+              ? "The patient will be able to log in to the app again."
+              : "The patient is logged out and can't log in to the app. Doctors can still see and treat them."
+        }
+        error={actionError}
+      >
+        {blockedReason && <InlineNotice tone="warning">{blockedReason}</InlineNotice>}
+      </ConfirmDialog>
     </main>
   );
 }

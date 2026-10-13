@@ -7,6 +7,7 @@ import {
   queryString,
   unwrapData,
   clearAdminTokens,
+  adminDownload,
 } from "./client";
 
 export type AdminPermission = {
@@ -233,13 +234,6 @@ export async function setMasterStatus(resource: string, id: string, is_active: b
   return unwrapData(await adminPatch(`/admin/masters/${encodeURIComponent(resource)}/${encodeURIComponent(id)}/status`, { is_active }));
 }
 
-export async function importMaster(resource: string, file: File) {
-  const form = new FormData();
-  form.append("file", file);
-  return unwrapData(
-    await adminPost(`/admin/imports/${encodeURIComponent(resource)}`, form),
-  );
-}
 
 export async function getSystemSettings() {
   return unwrapData(await adminGet("/admin/system-settings"));
@@ -252,12 +246,6 @@ export async function getPaymentSettings() {
 }
 export async function updatePaymentSettings(body: Record<string, unknown>) {
   return unwrapData(await adminPut("/admin/payment-settings", body));
-}
-export async function getAppSettings() {
-  return unwrapData(await adminGet("/admin/app-settings"));
-}
-export async function updateAppSettings(patient_app_version: string) {
-  return unwrapData(await adminPut("/admin/app-settings", { patient_app_version }));
 }
 export async function getAppContent() {
   return unwrapData(await adminGet("/admin/app-content"));
@@ -279,15 +267,6 @@ export async function updateSeasonalHealth(id: string, body: Record<string, unkn
 }
 export async function deleteSeasonalHealth(id: string) {
   return adminDelete(`/admin/seasonal-health/${encodeURIComponent(id)}`);
-}
-export async function getDoctorDocuments(applicationId: string | number) {
-  return unwrapData(
-    await adminGet(
-      `/admin/doctor-applications/${encodeURIComponent(
-        String(applicationId),
-      )}/documents`,
-    ),
-  );
 }
 export async function getDoctorRegistrationLookups() {
   return unwrapData(
@@ -479,4 +458,132 @@ export async function deleteAppSearchKeyword(
   return adminDelete(
     `/admin/app-search-keywords/${encodeURIComponent(id)}`,
   );
+}
+
+// ============================================================
+// Activity log export
+// ============================================================
+
+export async function exportActivityLogs(params: Record<string, unknown> = {}) {
+  return adminDownload(`/admin/activity-logs/export${queryString(params)}`, "activity-logs.csv");
+}
+
+// ============================================================
+// Doctor documents
+// ============================================================
+
+export type DoctorDocumentType = "mci_nmc_certificate" | "photo_id" | "other";
+
+export async function getDoctorDocumentUrl(doctorId: string, documentId: string | number) {
+  return unwrapData<{ url: string; expires_at: string | null }>(
+    await adminGet(
+      `/admin/doctors/${encodeURIComponent(doctorId)}/documents/${encodeURIComponent(String(documentId))}/url`,
+    ),
+  );
+}
+export async function uploadDoctorDocument(doctorId: string, type: DoctorDocumentType, file: File) {
+  const form = new FormData();
+  form.append("type", type);
+  form.append("file", file);
+  return unwrapData(
+    await adminPost(`/admin/doctors/${encodeURIComponent(doctorId)}/documents`, form, { timeoutMs: 120000 }),
+  );
+}
+export async function deleteDoctorDocument(doctorId: string, documentId: string | number) {
+  return unwrapData(
+    await adminDelete(
+      `/admin/doctors/${encodeURIComponent(doctorId)}/documents/${encodeURIComponent(String(documentId))}`,
+    ),
+  );
+}
+
+// ============================================================
+// Static app content
+// ============================================================
+
+export async function createAppContent(body: Record<string, unknown>) {
+  return unwrapData(await adminPost("/admin/app-content", body));
+}
+export async function setAppContentStatus(slug: string, is_published: boolean) {
+  return unwrapData(await adminPatch(`/admin/app-content/${encodeURIComponent(slug)}/status`, { is_published }));
+}
+
+// ============================================================
+// Lookup options (grouped master)
+// ============================================================
+
+export async function getLookupGroups() {
+  return unwrapData(await adminGet("/admin/masters/lookup-options/groups"));
+}
+export async function getLookupOptions(params: Record<string, unknown> = {}) {
+  return unwrapData(await adminGet(`/admin/masters/lookup_options${queryString(params)}`));
+}
+export async function createLookupOption(body: Record<string, unknown>) {
+  return unwrapData(await adminPost("/admin/masters/lookup_options", body));
+}
+export async function updateLookupOption(id: string | number, body: Record<string, unknown>) {
+  return unwrapData(await adminPatch(`/admin/masters/lookup_options/${encodeURIComponent(String(id))}`, body));
+}
+export async function setLookupOptionStatus(id: string | number, is_active: boolean) {
+  return unwrapData(
+    await adminPatch(`/admin/masters/lookup_options/${encodeURIComponent(String(id))}/status`, { is_active }),
+  );
+}
+
+// ============================================================
+// Locations: states / districts / cities
+// ============================================================
+
+export type LocationKind = "states" | "districts" | "cities";
+
+export async function getLocations(kind: LocationKind, params: Record<string, unknown> = {}) {
+  return unwrapData(await adminGet(`/admin/${kind}${queryString(params)}`));
+}
+export async function getLocation(kind: LocationKind, id: string | number) {
+  return unwrapData(await adminGet(`/admin/${kind}/${encodeURIComponent(String(id))}`));
+}
+export async function createLocation(kind: LocationKind, body: Record<string, unknown>) {
+  return unwrapData(await adminPost(`/admin/${kind}`, body));
+}
+export async function updateLocation(kind: LocationKind, id: string | number, body: Record<string, unknown>) {
+  return unwrapData(await adminPatch(`/admin/${kind}/${encodeURIComponent(String(id))}`, body));
+}
+export async function setLocationStatus(kind: LocationKind, id: string | number, is_active: boolean) {
+  return unwrapData(await adminPatch(`/admin/${kind}/${encodeURIComponent(String(id))}/status`, { is_active }));
+}
+export async function deleteLocation(kind: LocationKind, id: string | number) {
+  return unwrapData(await adminDelete(`/admin/${kind}/${encodeURIComponent(String(id))}`));
+}
+
+// ============================================================
+// Master CSV imports
+// ============================================================
+
+export async function uploadMasterImport(master: string, file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  return unwrapData(
+    await adminPost(`/admin/imports/${encodeURIComponent(master)}`, form, { timeoutMs: 300000 }),
+  );
+}
+export async function downloadImportTemplate(master: string) {
+  return adminDownload(`/admin/imports/${encodeURIComponent(master)}/template`, `${master}-template.csv`);
+}
+export async function getImportLogs(params: Record<string, unknown> = {}) {
+  return unwrapData(await adminGet(`/admin/imports/logs${queryString(params)}`));
+}
+export async function downloadImportFile(log: { id: string | number; download_url?: string | null; original_file_name?: string | null }) {
+  const path = log.download_url || `/admin/imports/logs/${encodeURIComponent(String(log.id))}/download`;
+  return adminDownload(path, log.original_file_name || `import-${log.id}.csv`);
+}
+
+// ============================================================
+// Patient search logs
+// ============================================================
+
+export async function getPatientSearchLogs(params: Record<string, unknown> = {}) {
+  return unwrapData(await adminGet(`/admin/patient-search-logs${queryString(params)}`));
+}
+export async function exportPatientSearchLogs(params: Record<string, unknown> = {}) {
+  return adminDownload(`/admin/patient-search-logs/export${queryString(params)}`, "patient-search-logs.csv");
 }

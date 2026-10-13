@@ -17,6 +17,11 @@ import { getPatients } from "@/lib/api/admin";
 import { useAdminQuery } from "@/hooks/use-admin-api";
 import { formatDate } from "@/lib/formatters";
 import { Pagination } from "@/components/pagination";
+import {
+  DateRangeFilter,
+  getDefaultDateRange,
+  type DateSort,
+} from "@/components/date-range-filter";
 
 /* ================================================================
    PAGE
@@ -46,6 +51,18 @@ export default function PatientsPage() {
   });
 
   const hasRestoredScroll = useRef(false);
+
+  const defaultDateRange = getDefaultDateRange();
+
+  const [dateFrom, setDateFrom] = useState(
+    () => defaultDateRange.date_from,
+  );
+
+  const [dateTo, setDateTo] = useState(
+    () => defaultDateRange.date_to,
+  );
+
+  const [sort, setSort] = useState<DateSort>("desc");
 
   /* ==============================================================
      PERSIST PAGE / FILTERS
@@ -116,6 +133,9 @@ export default function PatientsPage() {
       getPatients({
         search,
         status,
+        date_from: dateFrom,
+        date_to: dateTo,
+        sort,
         page,
         limit: 20,
       }),
@@ -125,6 +145,9 @@ export default function PatientsPage() {
       {
         search,
         status,
+        dateFrom,
+        dateTo,
+        sort,
         page,
         limit: 20,
       },
@@ -297,9 +320,9 @@ export default function PatientsPage() {
 
           {/* Table Header */}
 
-          <div className="flex flex-col gap-4 border-b border-border/60 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="border-b border-border/60 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
 
-            <div>
+            <div className="mb-5">
               <h2 className="text-base font-semibold text-foreground">
                 Patients
               </h2>
@@ -311,50 +334,77 @@ export default function PatientsPage() {
               </p>
             </div>
 
-            <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
-
+            <div className="flex w-full flex-wrap items-end gap-3 lg:w-auto">
               {/* Search */}
+              <div className="flex w-full shrink-0 flex-col gap-1.5 sm:w-[250px]">
+                <label className="text-xs font-semibold uppercase tracking-[0.04em] text-muted-foreground">
+                  Search Patients
+                </label>
 
-              <div className="relative w-full sm:w-[300px]">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/80" />
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/80" />
 
-                <Input
-                  value={search}
-                  onChange={(event) => {
-                    setPage(1);
-                    setSearch(event.target.value);
-                  }}
-                  placeholder="Search name, mobile or patient ID..."
-                  className="h-9 border-border bg-muted/50 pl-9 pr-9 text-xs focus:bg-card"
-                />
+                  <Input
+                    value={search}
+                    onChange={(event) => {
+                      setPage(1);
+                      setSearch(event.target.value);
+                    }}
+                    placeholder="Search name, mobile or patient ID..."
+                    className="h-9 border-border bg-muted/50 pl-9 pr-3 text-xs focus:bg-card"
+                  />
+                </div>
               </div>
 
               {/* Status */}
+              <div className="flex shrink-0 flex-col gap-1.5">
+                <label className="text-xs font-semibold uppercase tracking-[0.04em] text-muted-foreground">
+                  Status
+                </label>
 
-              <select
-                value={status}
-                onChange={(event) => {
-                  setPage(1);
-                  setStatus(event.target.value);
-                }}
-                className="h-9 min-w-[145px] rounded-md border border-border bg-muted/50 px-3 text-xs text-muted-foreground outline-none transition focus:border-input focus:bg-card focus:ring-2 focus:ring-border/60"
-              >
-                <option value="">
-                  All statuses
-                </option>
+                <select
+                  value={status}
+                  onChange={(event) => {
+                    setPage(1);
+                    setStatus(event.target.value);
+                  }}
+                  className="h-9 w-[145px] rounded-md border border-border bg-muted/50 px-3 text-xs text-muted-foreground outline-none focus:border-input focus:bg-card focus:ring-2 focus:ring-border/60"
+                >
+                  <option value="">All statuses</option>
+                  <option value="active">Active</option>
+                  <option value="suspended">Suspended</option>
+                  <option value="deleted">Deleted</option>
+                </select>
+              </div>
 
-                <option value="active">
-                  Active
-                </option>
+              {/* Date Range and Sort */}
+              <div className="shrink-0">
+                <DateRangeFilter
+                  dateFrom={dateFrom}
+                  dateTo={dateTo}
+                  sort={sort}
+                  onDateFromChange={(value) => {
+                    setDateFrom(value);
+                    setPage(1);
+                  }}
+                  onDateToChange={(value) => {
+                    setDateTo(value);
+                    setPage(1);
+                  }}
+                  onSortChange={(value) => {
+                    setSort(value);
+                    setPage(1);
+                  }}
+                  onReset={() => {
+                    const defaults = getDefaultDateRange();
 
-                <option value="suspended">
-                  Suspended
-                </option>
-
-                <option value="deleted">
-                  Deleted
-                </option>
-              </select>
+                    setDateFrom(defaults.date_from);
+                    setDateTo(defaults.date_to);
+                    setSort("desc");
+                    setPage(1);
+                  }}
+                />
+              </div>
             </div>
           </div>
 
@@ -434,11 +484,11 @@ export default function PatientsPage() {
 
                               <span
                                 className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${row?.is_app_account === true ||
-                                    String(
-                                      row?.created_source ?? "",
-                                    ).toLowerCase() === "app"
-                                    ? "bg-primary/10 text-primary"
-                                    : "bg-muted text-muted-foreground"
+                                  String(
+                                    row?.created_source ?? "",
+                                  ).toLowerCase() === "app"
+                                  ? "bg-primary/10 text-primary"
+                                  : "bg-muted text-muted-foreground"
                                   }`}
                               >
                                 {row?.is_app_account === true ||
@@ -473,23 +523,23 @@ export default function PatientsPage() {
                   },
 
                   {
-                  header: "Registration Date",
-                  key: "created_at",
-                  render: (_, value) => (
-                  <>
-                    <span className="text-xs text-muted-foreground">
-                      {value
-                        ? new Date(value?.created_at).toLocaleDateString("en-IN", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                          })
-                        : "—"}
-                    </span>
-                   {value?.created_by_doctor_name && <span className="block text-[10px] text-muted-foreground">Register By: {value?.created_by_doctor_name}</span>}
-                  </>
-                  ),
-                },
+                    header: "Registration Date",
+                    key: "created_at",
+                    render: (_, value) => (
+                      <>
+                        <span className="text-xs text-muted-foreground">
+                          {value
+                            ? new Date(value?.created_at).toLocaleDateString("en-IN", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })
+                            : "—"}
+                        </span>
+                        {value?.created_by_doctor_name && <span className="block text-[10px] text-muted-foreground">Register By: {value?.created_by_doctor_name}</span>}
+                      </>
+                    ),
+                  },
 
                   {
                     header: "DOB / Gender",
@@ -658,6 +708,39 @@ export default function PatientsPage() {
                   },
                 ]}
                 data={rows}
+                onRowClick={(row) => {
+                  sessionStorage.setItem(
+                    "patients-restore-on-back",
+                    "1",
+                  );
+
+                  sessionStorage.setItem(
+                    "patients-page",
+                    String(page),
+                  );
+
+                  sessionStorage.setItem(
+                    "patients-search",
+                    search,
+                  );
+
+                  sessionStorage.setItem(
+                    "patients-status",
+                    status,
+                  );
+
+                  const scrollTop =
+                    document.scrollingElement?.scrollTop ??
+                    window.scrollY ??
+                    0;
+
+                  sessionStorage.setItem(
+                    "patients-scroll-position",
+                    String(scrollTop),
+                  );
+
+                  window.location.href = `/patients/${row.id}`;
+                }}
               />
 
             </div>

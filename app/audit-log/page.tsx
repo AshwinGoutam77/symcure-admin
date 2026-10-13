@@ -7,6 +7,7 @@ import {
 } from "react";
 
 import {
+  Download,
   RefreshCw,
   Search,
   ShieldAlert,
@@ -19,7 +20,10 @@ import {
   useSearchParams,
 } from "next/navigation";
 
-import { getActivityLogs } from "@/lib/api/admin";
+import { exportActivityLogs, getActivityLogs } from "@/lib/api/admin";
+import { ActivityLogDetail } from "@/components/admin/activity-log-detail";
+import { usePermission } from "@/hooks/use-permission";
+import { apiErrorMessage } from "@/lib/api/errors";
 import { useAdminQuery } from "@/hooks/use-admin-api";
 
 import { DataTable } from "@/components/data-table";
@@ -29,6 +33,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 function AuditLogPageContent() {
+  const perm = usePermission("activity_logs");
+  const [detailId, setDetailId] = useState<string | number | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -385,6 +393,30 @@ function AuditLogPageContent() {
 
           </div>
 
+          <div className="flex items-center gap-2">
+          {perm.export && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 text-xs"
+              disabled={exporting}
+              onClick={async () => {
+                setExporting(true);
+                setExportError("");
+                try {
+                  await exportActivityLogs({ search, module, date_from: dateFrom, date_to: dateTo, sort });
+                } catch (err) {
+                  setExportError(apiErrorMessage(err, "Export failed."));
+                } finally {
+                  setExporting(false);
+                }
+              }}
+            >
+              {exporting ? <RefreshCw className="size-4 animate-spin" /> : <Download className="size-4" />}
+              Export CSV
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
@@ -405,8 +437,15 @@ function AuditLogPageContent() {
 
             Refresh
           </Button>
+          </div>
 
         </div>
+
+        {exportError && (
+          <div className="mb-4 rounded-md border border-destructive/25 bg-destructive-soft px-3 py-2 text-xs text-destructive">
+            {exportError}
+          </div>
+        )}
 
         {/* =====================================================
             ERROR
@@ -767,7 +806,11 @@ function AuditLogPageContent() {
                   ? []
                   : rows
               }
+              onRowClick={(row) => setDetailId(row.id)}
             />
+            {!isLoading && rows.length > 0 && (
+              <p className="pb-3 pt-2 text-xs text-muted-foreground">Click a row to see who changed what, with before and after values.</p>
+            )}
 
           </div>
 
@@ -869,6 +912,8 @@ function AuditLogPageContent() {
         </div>
 
       </div>
+
+      <ActivityLogDetail logId={detailId} onClose={() => setDetailId(null)} />
     </div>
   );
 }

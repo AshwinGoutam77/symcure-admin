@@ -11,7 +11,11 @@ import {
   approveApplication,
   rejectApplication,
   getApplicationDocumentUrl,
+  deleteApplication,
 } from "@/lib/api/admin";
+import { ConfirmDialog } from "@/components/admin/kit";
+import { usePermission } from "@/hooks/use-permission";
+import { apiErrorMessage } from "@/lib/api/errors";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -34,6 +38,7 @@ import {
   Phone,
   CalendarDays,
   LockKeyhole,
+  Trash2,
 } from "lucide-react";
 import { formatDate, formatDateTime, getInitials } from "@/lib/formatters";
 
@@ -205,6 +210,20 @@ export default function ApplicationDetailPage() {
   >(null);
 
   const [reason, setReason] = useState("");
+  const perm = usePermission("doctor_applications");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const deleteMutation = useAdminMutation<void, unknown>(() => deleteApplication(id));
+
+  const confirmDelete = async () => {
+    setDeleteError("");
+    try {
+      await deleteMutation.mutateAsync();
+      router.replace("/applications");
+    } catch (err) {
+      setDeleteError(apiErrorMessage(err, "Couldn't delete the application."));
+    }
+  };
 
   const {
     data,
@@ -366,7 +385,22 @@ export default function ApplicationDetailPage() {
             {/* Right Actions */}
             <div className="flex flex-wrap items-center gap-2">
 
-              {isPending && (
+              {perm.delete && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-1.5 border-destructive/25 text-destructive hover:bg-destructive-soft hover:text-destructive"
+                  onClick={() => {
+                    setDeleteError("");
+                    setDeleteOpen(true);
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                  Delete
+                </Button>
+              )}
+
+              {isPending && perm.edit && (
                 <>
                   {/* Reject */}
                   <Button
@@ -1326,6 +1360,16 @@ export default function ApplicationDetailPage() {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => void confirmDelete()}
+        busy={deleteMutation.isPending}
+        title="Delete application"
+        confirmLabel="Delete application"
+        description="The application is hidden from the Applications list. The record is kept in the database for audit."
+        error={deleteError}
+      />
     </>
   );
 }

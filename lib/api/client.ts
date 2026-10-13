@@ -103,7 +103,8 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 }
 
 export const adminGet = <T>(path: string) => apiFetch<T>(path, { method: "GET" });
-export const adminPost = <T>(path: string, body?: unknown) => apiFetch<T>(path, { method: "POST", body });
+export const adminPost = <T>(path: string, body?: unknown, options: { timeoutMs?: number } = {}) =>
+  apiFetch<T>(path, { method: "POST", body, ...options });
 export const adminPatch = <T>(path: string, body?: unknown) => apiFetch<T>(path, { method: "PATCH", body });
 export const adminPut = <T>(path: string, body?: unknown) => apiFetch<T>(path, { method: "PUT", body });
 export const adminDelete = <T>(path: string) => apiFetch<T>(path, { method: "DELETE" });
@@ -119,4 +120,50 @@ export function queryString(params: Record<string, unknown>) {
 
 export function unwrapData<T = any>(payload: any): T {
   return payload?.data ?? payload;
+}
+
+/**
+ * Authenticated file download (CSV exports, import templates, uploaded import files).
+ * Plain <a href> links cannot send the Bearer token, so the file is fetched as a blob
+ * and handed to the browser as a download.
+ */
+export async function adminDownload(path: string, fallbackName = "download.csv") {
+  const headers = new Headers({ Accept: "*/*" });
+  const token = getAdminToken();
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  // download_url values may arrive as absolute URLs, "/api/v1/…" paths or "/admin/…" paths.
+  const relative = path.replace(/^\/?api\/v\d+\//, "/");
+  const url = path.startsWith("http") ? path : `${API_BASE_URL}/${relative.replace(/^\//, "")}`;
+  const response = await fetch(url, { method: "GET", headers, cache: "no-store" });
+
+  if (!response.ok) {
+    const contentType = response.headers.get("content-type") || "";
+    const payload = contentType.includes("application/json") ? await response.json().catch(() => null) : null;
+    if (response.status === 401 && typeof window !== "undefined") {
+      clearAdminTokens();
+      if (window.location.pathname !== "/login") window.location.replace("/login");
+    }
+    throw new ApiError(
+      getErrorMessage(payload, `Download failed with status ${response.status}`),
+      response.status,
+      payload?.error?.code,
+      payload?.error?.details,
+    );
+  }
+
+  const disposition = response.headers.get("content-disposition") || "";
+  const match = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(disposition);
+  const filename = match ? decodeURIComponent(match[1]) : fallbackName;
+  const blob = await response.blob();
+
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  return filename;
 }
